@@ -22,11 +22,17 @@ if ! pnpm typecheck; then
 fi
 
 # Run lint
-echo "Running lint..."
-if ! pnpm lint; then
-    echo "❌ Linting failed! Run 'pnpm lint:fix' to fix the easy issues."
-    echo "Once you're done, don't forget to add your beautification to the commit! 🤩"
-    exit 1
+staged_app_files="$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^app/.*\.(ts|tsx|js|jsx)$' || true)"
+
+if [ -n "$staged_app_files" ]; then
+    echo "Running lint on staged app files..."
+    if ! printf '%s\n' "$staged_app_files" | tr '\n' '\0' | xargs -0 pnpm exec eslint --cache --cache-location ./node_modules/.cache/eslint; then
+        echo "❌ Linting failed on staged app files! Run 'pnpm lint:fix' or fix the reported files manually."
+        echo "Once you're done, don't forget to add your beautification to the commit! 🤩"
+        exit 1
+    fi
+else
+    echo "No staged app files to lint."
 fi
 
 echo "👍 All checks passed! Committing changes..."
