@@ -21,6 +21,8 @@ README.md
 **/dist
 **/build
 **/.cache
+**/.wrangler
+.docker/
 logs
 dist-ssr
 .DS_Store

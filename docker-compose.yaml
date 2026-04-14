@@ -7,25 +7,27 @@ services:
       target: bolt-ai-production
     ports:
       - '5173:5173'
-    env_file: 
-      - '.env'
-      - '.env.local'
+    env_file:
+      - path: '.env'
+        required: false
+      - path: '.env.local'
+        required: false
     environment:
       - NODE_ENV=production
       - COMPOSE_PROFILES=production
       # No strictly needed but serving as hints for Coolify
       - PORT=5173
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - HuggingFace_API_KEY=${HuggingFace_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY}
-      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
-      - OLLAMA_API_BASE_URL=${OLLAMA_API_BASE_URL}
-      - XAI_API_KEY=${XAI_API_KEY}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
-      - TOGETHER_API_BASE_URL=${TOGETHER_API_BASE_URL}
-      - AWS_BEDROCK_CONFIG=${AWS_BEDROCK_CONFIG}
+      - GROQ_API_KEY
+      - HuggingFace_API_KEY
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - OPEN_ROUTER_API_KEY
+      - GOOGLE_GENERATIVE_AI_API_KEY
+      - OLLAMA_API_BASE_URL
+      - XAI_API_KEY
+      - TOGETHER_API_KEY
+      - TOGETHER_API_BASE_URL
+      - AWS_BEDROCK_CONFIG
       - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
       - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
       - RUNNING_IN_DOCKER=true
@@ -35,11 +37,11 @@ services:
       # Persistent data volumes
       - bolt-data:/root/.config # Wrangler config and cache
       - bolt-cache:/app/.cache # Build cache
-      - bolt-npm-cache:/root/.npm # NPM cache
     command: pnpm run dockerstart
     profiles:
       - production
     restart: unless-stopped
+    init: true
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
       interval: 10s
@@ -53,9 +55,11 @@ services:
       context: .
       dockerfile: Dockerfile
       target: development
-    env_file: 
-      - '.env'
-      - '.env.local'
+    env_file:
+      - path: '.env'
+        required: false
+      - path: '.env.local'
+        required: false
     environment:
       - NODE_ENV=development
       - VITE_HMR_PROTOCOL=ws
@@ -64,17 +68,17 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - PORT=5173
-      - GROQ_API_KEY=${GROQ_API_KEY}
-      - HuggingFace_API_KEY=${HuggingFace_API_KEY}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - OPEN_ROUTER_API_KEY=${OPEN_ROUTER_API_KEY}
-      - XAI_API_KEY=${XAI_API_KEY}
-      - GOOGLE_GENERATIVE_AI_API_KEY=${GOOGLE_GENERATIVE_AI_API_KEY}
-      - OLLAMA_API_BASE_URL=${OLLAMA_API_BASE_URL}
-      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
-      - TOGETHER_API_BASE_URL=${TOGETHER_API_BASE_URL}
-      - AWS_BEDROCK_CONFIG=${AWS_BEDROCK_CONFIG}
+      - GROQ_API_KEY
+      - HuggingFace_API_KEY
+      - OPENAI_API_KEY
+      - ANTHROPIC_API_KEY
+      - OPEN_ROUTER_API_KEY
+      - XAI_API_KEY
+      - GOOGLE_GENERATIVE_AI_API_KEY
+      - OLLAMA_API_BASE_URL
+      - TOGETHER_API_KEY
+      - TOGETHER_API_BASE_URL
+      - AWS_BEDROCK_CONFIG
       - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
       - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
       - RUNNING_IN_DOCKER=true
@@ -85,11 +89,28 @@ services:
         source: .
         target: /app
         consistency: cached
-      - /app/node_modules
+      - type: volume
+        source: bolt-node-modules
+        target: /app/node_modules
+        volume:
+          nocopy: true
+      - type: volume
+        source: bolt-pnpm-store
+        target: /pnpm/store
+      - bolt-cache:/app/.cache
+      - bolt-data:/root/.config
     ports:
       - '5173:5173'
-    command: pnpm run dev --host 0.0.0.0
+    command: docker-dev-start
     profiles: ['development', 'default']
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
 
   app-prebuild:
     image: ghcr.io/stackblitz-labs/bolt.diy:latest
@@ -108,11 +129,11 @@ services:
     volumes:
       - bolt-data:/root/.config
       - bolt-cache:/app/.cache
-      - bolt-npm-cache:/root/.npm
     command: pnpm run dockerstart
     profiles:
       - prebuilt
     restart: unless-stopped
+    init: true
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
       interval: 10s
@@ -135,9 +156,6 @@ volumes:
       o: bind
       device: ${BOLT_CACHE_PATH:-./.docker/cache}
   
-  bolt-npm-cache:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${BOLT_NPM_CACHE_PATH:-./.docker/npm-cache}
+  bolt-node-modules:
+
+  bolt-pnpm-store:
