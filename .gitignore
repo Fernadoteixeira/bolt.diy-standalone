@@ -58,6 +58,9 @@ api-test-results.json
 scripts/test-apis.mjs
 scripts/validate-apis.mjs
 
+# firecrawl scratch output
+.firecrawl/
+
 # Docker persistent storage
 .docker/
 

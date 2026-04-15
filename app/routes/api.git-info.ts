@@ -6,8 +6,10 @@ let existsSync: ((path: string) => boolean) | null = null;
 // Only import fs and child_process if we're not in a Cloudflare environment
 try {
   if (typeof process !== 'undefined' && process.platform) {
-    const { execSync: nodeExecSync } = require('child_process');
-    const { existsSync: nodeExistsSync } = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    const { execSync: nodeExecSync } = require('node:child_process');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    const { existsSync: nodeExistsSync } = require('node:fs');
     execSync = nodeExecSync;
     existsSync = nodeExistsSync;
   }

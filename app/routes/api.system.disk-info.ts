@@ -7,8 +7,8 @@ let execSync: ((cmd: string, opts: any) => string) | null = null;
 try {
   // Check if we're in a Node.js environment
   if (typeof process !== 'undefined' && process.platform) {
-    // Import the real execSync from child_process
-    const { execSync: nodeExecSync } = require('child_process');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    const { execSync: nodeExecSync } = require('node:child_process');
     execSync = nodeExecSync;
   }
 } catch {
@@ -81,6 +81,7 @@ const getDiskInfo = (): DiskInfo[] => {
   try {
     // Different commands for different operating systems
     const platform = process.platform;
+
     let disks: DiskInfo[] = [];
 
     // Early exit if execSync is not available (and not in development)
@@ -99,6 +100,7 @@ const getDiskInfo = (): DiskInfo[] => {
           },
         ];
       }
+
       // For development, continue to mock data handling below
     } else if (platform === 'darwin' && execSync) {
       // macOS - use df command to get disk information

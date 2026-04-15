@@ -63,7 +63,7 @@ async function waitForServer(port, serverName) {
     let retries = 0;
 
     const checkServer = () => {
-      exec(`lsof -i :${port}`, (error, stdout) => {
+      exec(`netstat -ano | findstr :${port}`, (error, stdout) => {
         if (stdout) {
           console.log(`✅ ${serverName} started`);
           resolve();
@@ -86,8 +86,8 @@ async function waitForServer(port, serverName) {
  */
 async function buildElectronDeps() {
   return new Promise((resolve, reject) => {
-    const buildProcess = spawn('pnpm', ['electron:build:deps'], {
-      stdio: 'inherit',
+    const buildProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'electron:build:deps'], {
+      stdio: "inherit", shell: true,
       env: { ...process.env },
     });
 
@@ -118,8 +118,8 @@ async function startElectronDev() {
 
     // 2. Start Remix development server
     console.log('🌐 Starting Remix development server...');
-    remixProcess = spawn('pnpm', ['dev'], {
-      stdio: 'pipe',
+    remixProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev'], {
+      stdio: "pipe", shell: true,
       env: { ...process.env },
     });
 
@@ -147,7 +147,7 @@ async function startElectronDev() {
     }
 
     electronProcess = spawn(electronPath, [mainPath], {
-      stdio: 'inherit',
+      stdio: "inherit", shell: true,
       env: {
         ...process.env,
         NODE_ENV: 'development',

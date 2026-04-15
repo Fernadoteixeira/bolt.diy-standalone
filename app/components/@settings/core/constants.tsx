@@ -1,5 +1,5 @@
-import type { TabType } from './types';
 import { User, Settings, Bell, Star, Database, Cloud, Laptop, Github, Wrench, List } from 'lucide-react';
+import type { TabType } from './types';
 
 // GitLab icon component
 const GitLabIcon = () => (
@@ -28,16 +28,6 @@ const NetlifyIcon = () => (
   </svg>
 );
 
-// Supabase icon component
-const SupabaseIcon = () => (
-  <svg viewBox="0 0 24 24" className="w-4 h-4">
-    <path
-      fill="currentColor"
-      d="M21.362 9.354H12V.396a.396.396 0 0 0-.716-.233L2.203 12.424l-.401.562a1.04 1.04 0 0 0 .836 1.659H12V21.6a.396.396 0 0 0 .716.233l9.081-12.261.401-.562a1.04 1.04 0 0 0-.836-1.656z"
-    />
-  </svg>
-);
-
 export const TAB_ICONS: Record<TabType, React.ComponentType<{ className?: string }>> = {
   profile: User,
   settings: Settings,
@@ -50,7 +40,7 @@ export const TAB_ICONS: Record<TabType, React.ComponentType<{ className?: string
   gitlab: () => <GitLabIcon />,
   netlify: () => <NetlifyIcon />,
   vercel: () => <VercelIcon />,
-  supabase: () => <SupabaseIcon />,
+  supabase: Database,
   'event-logs': List,
   mcp: Wrench,
 };
@@ -67,7 +57,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   gitlab: 'GitLab',
   netlify: 'Netlify',
   vercel: 'Vercel',
-  supabase: 'Supabase',
+  supabase: 'PostgreSQL',
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
 };
@@ -84,7 +74,7 @@ export const TAB_DESCRIPTIONS: Record<TabType, string> = {
   gitlab: 'Connect and manage GitLab integration',
   netlify: 'Configure Netlify deployment settings',
   vercel: 'Manage Vercel projects and deployments',
-  supabase: 'Setup Supabase database connection',
+  supabase: 'Manage the local PostgreSQL, vector memory, and offline map services',
   'event-logs': 'View system events and logs',
   mcp: 'Configure MCP (Model Context Protocol) servers',
 };

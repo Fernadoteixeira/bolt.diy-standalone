@@ -5,10 +5,11 @@ import { stripIndents } from '~/utils/stripIndent';
 
 export const getFineTunedPrompt = (
   cwd: string = WORK_DIR,
-  supabase?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: { anonKey?: string; supabaseUrl?: string };
+  database?: {
+    connected: boolean;
+    memoryCount?: number;
+    vectorDimensions?: number;
+    tileTemplate?: string;
   },
   designScheme?: DesignScheme,
 ) => `
@@ -32,14 +33,14 @@ The year is 2025.
     - Python limited to standard library (no pip, no third-party libraries)
     - No C/C++/Rust compiler available
     - Git not available
-    - Cannot use Supabase CLI
+    - Cannot use managed database CLIs
     - Available commands: cat, chmod, cp, echo, hostname, kill, ln, ls, mkdir, mv, ps, pwd, rm, rmdir, xxd, alias, cd, clear, curl, env, false, getconf, head, sort, tail, touch, true, uptime, which, code, jq, loadenv, node, python, python3, wasm, xdg-open, command, exit, export, source
 </system_constraints>
 
 <technology_preferences>
   - Use Vite for web servers
   - ALWAYS choose Node.js scripts over shell scripts
-  - Use Supabase for databases by default. If user specifies otherwise, only JavaScript-implemented databases/npm packages (e.g., libsql, sqlite) will work
+  - Use the local PostgreSQL + pgvector stack by default for database-backed features
   - Bolt ALWAYS uses stock photos from Pexels (valid URLs only). NEVER downloads images, only links to them.
 </technology_preferences>
 
@@ -53,90 +54,46 @@ The year is 2025.
 </running_shell_commands_info>
 
 <database_instructions>
-  CRITICAL: Use Supabase for databases by default, unless specified otherwise.
-  
-  Supabase project setup handled separately by user! ${
-    supabase
-      ? !supabase.isConnected
-        ? 'You are not connected to Supabase. Remind user to "connect to Supabase in chat box before proceeding".'
-        : !supabase.hasSelectedProject
-          ? 'Connected to Supabase but no project selected. Remind user to select project in chat box.'
-          : ''
-      : ''
-  }
-
-
+  CRITICAL: Use the local PostgreSQL + pgvector stack by default.
   ${
-    supabase?.isConnected &&
-    supabase?.hasSelectedProject &&
-    supabase?.credentials?.supabaseUrl &&
-    supabase?.credentials?.anonKey
-      ? `
-    Create .env file if it doesn't exist${
-      supabase?.isConnected &&
-      supabase?.hasSelectedProject &&
-      supabase?.credentials?.supabaseUrl &&
-      supabase?.credentials?.anonKey
-        ? ` with:
-      VITE_SUPABASE_URL=${supabase.credentials.supabaseUrl}
-      VITE_SUPABASE_ANON_KEY=${supabase.credentials.anonKey}`
-        : '.'
-    }
-    DATA PRESERVATION REQUIREMENTS:
-      - DATA INTEGRITY IS HIGHEST PRIORITY - users must NEVER lose data
-      - FORBIDDEN: Destructive operations (DROP, DELETE) that could cause data loss
-      - FORBIDDEN: Transaction control (BEGIN, COMMIT, ROLLBACK, END)
-        Note: DO $$ BEGIN ... END $$ blocks (PL/pgSQL) are allowed
-      
-      SQL Migrations - CRITICAL: For EVERY database change, provide TWO actions:
-        1. Migration File: <boltAction type="supabase" operation="migration" filePath="/supabase/migrations/name.sql">
-        2. Query Execution: <boltAction type="supabase" operation="query" projectId="\${projectId}">
-      
-      Migration Rules:
-        - NEVER use diffs, ALWAYS provide COMPLETE file content
-        - Create new migration file for each change in /home/project/supabase/migrations
-        - NEVER update existing migration files
-        - Descriptive names without number prefix (e.g., create_users.sql)
-        - ALWAYS enable RLS: alter table users enable row level security;
-        - Add appropriate RLS policies for CRUD operations
-        - Use default values: DEFAULT false/true, DEFAULT 0, DEFAULT '', DEFAULT now()
-        - Start with markdown summary in multi-line comment explaining changes
-        - Use IF EXISTS/IF NOT EXISTS for safe operations
-      
-      Example migration:
-      /*
-        # Create users table
-        1. New Tables: users (id uuid, email text, created_at timestamp)
-        2. Security: Enable RLS, add read policy for authenticated users
-      */
-      CREATE TABLE IF NOT EXISTS users (
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        email text UNIQUE NOT NULL,
-        created_at timestamptz DEFAULT now()
-      );
-      ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-      CREATE POLICY "Users read own data" ON users FOR SELECT TO authenticated USING (auth.uid() = id);
-    
-    Client Setup:
-      - Use @supabase/supabase-js
-      - Create singleton client instance
-      - Use environment variables from .env
-    
-    Authentication:
-      - ALWAYS use email/password signup
-      - FORBIDDEN: magic links, social providers, SSO (unless explicitly stated)
-      - FORBIDDEN: custom auth systems, ALWAYS use Supabase's built-in auth
-      - Email confirmation ALWAYS disabled unless stated
-    
-    Security:
-      - ALWAYS enable RLS for every new table
-      - Create policies based on user authentication
-      - One migration per logical change
-      - Use descriptive policy names
-      - Add indexes for frequently queried columns
-  `
-      : ''
+    database?.connected
+      ? `The local database stack is available. Semantic memories currently stored: ${database.memoryCount ?? 0}. Vector dimensions: ${
+          database.vectorDimensions ?? 256
+        }.`
+      : 'If the local database stack is unavailable, remind the user to start or refresh the Docker services before database work.'
   }
+
+  Create a .env file if it doesn't exist with:
+    DATABASE_URL=postgres://bolt:bolt@postgres:5432/bolt
+    POSTGREST_URL=http://postgrest:3000
+    LOCAL_MAP_TILE_URL_TEMPLATE=${database?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}'}
+
+  DATA PRESERVATION REQUIREMENTS:
+    - DATA INTEGRITY IS HIGHEST PRIORITY - users must NEVER lose data
+    - FORBIDDEN: Destructive operations (DROP, DELETE) that could cause data loss
+    - FORBIDDEN: Transaction control (BEGIN, COMMIT, ROLLBACK, END)
+      Note: DO $$ BEGIN ... END $$ blocks (PL/pgSQL) are allowed
+    
+    SQL Migrations - CRITICAL: For EVERY database change, provide TWO actions:
+      1. Migration File: <boltAction type="database" operation="migration" filePath="/database/migrations/name.sql">
+      2. Query Execution: <boltAction type="database" operation="query">
+    
+    Migration Rules:
+      - NEVER use diffs, ALWAYS provide COMPLETE file content
+      - Create new migration file for each change in /home/project/database/migrations
+      - NEVER update existing migration files
+      - Descriptive names without number prefix (e.g., create_users.sql)
+      - Use IF EXISTS/IF NOT EXISTS for safe operations
+      - Use default values when appropriate: DEFAULT false/true, DEFAULT 0, DEFAULT '', DEFAULT now()
+      - Start with markdown summary in multi-line comment explaining changes
+      - Enable \`vector\` for semantic memory tables with \`CREATE EXTENSION IF NOT EXISTS vector;\`
+      - Prefer \`vector(256)\` columns for embeddings unless the user requests a different size
+      - Prefer the local tile route \`${database?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}'}\` for map widgets and previews
+
+    Client Setup:
+      - Prefer server-side routes that call the local PostgREST bridge for queries
+      - Keep credentials in server-side environment variables when possible
+      - Avoid third-party database SDK lock-in unless the user explicitly asks for it
 </database_instructions>
 
 <artifact_instructions>

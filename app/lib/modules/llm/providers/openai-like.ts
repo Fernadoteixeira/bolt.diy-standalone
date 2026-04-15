@@ -1,7 +1,7 @@
+import type { LanguageModelV1 } from 'ai';
 import { BaseProvider, getOpenAILikeModel } from '~/lib/modules/llm/base-provider';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting } from '~/types/model';
-import type { LanguageModelV1 } from 'ai';
 import { logger } from '~/utils/logger';
 
 interface OpenAIModelsResponse {
@@ -20,15 +20,54 @@ export default class OpenAILikeProvider extends BaseProvider {
 
   staticModels: ModelInfo[] = [];
 
+  private _normalizeAliasValue(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    const firstValue = value
+      .split(/[,\n;]/)
+      .map((entry) => entry.trim())
+      .find(Boolean);
+
+    return firstValue || undefined;
+  }
+
+  private _applyOpenWebUIAliases(serverEnv: Record<string, string>): Record<string, string> {
+    const aliasEnv = { ...serverEnv };
+
+    const baseUrl =
+      aliasEnv.OPENAI_LIKE_API_BASE_URL ||
+      this._normalizeAliasValue(aliasEnv.OPENAI_API_BASE_URLS) ||
+      this._normalizeAliasValue(aliasEnv.OPENAI_API_BASE_URL);
+
+    const apiKey =
+      aliasEnv.OPENAI_LIKE_API_KEY ||
+      this._normalizeAliasValue(aliasEnv.OPENAI_API_KEYS) ||
+      this._normalizeAliasValue(aliasEnv.OPENAI_API_KEY);
+
+    if (baseUrl) {
+      aliasEnv.OPENAI_LIKE_API_BASE_URL = baseUrl;
+    }
+
+    if (apiKey) {
+      aliasEnv.OPENAI_LIKE_API_KEY = apiKey;
+    }
+
+    return aliasEnv;
+  }
+
   async getDynamicModels(
     apiKeys?: Record<string, string>,
     settings?: IProviderSetting,
     serverEnv: Record<string, string> = {},
   ): Promise<ModelInfo[]> {
+    const normalizedEnv = this._applyOpenWebUIAliases(serverEnv);
+
     const { baseUrl, apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
       providerSettings: settings,
-      serverEnv,
+      serverEnv: normalizedEnv,
       defaultBaseUrlKey: 'OPENAI_LIKE_API_BASE_URL',
       defaultApiTokenKey: 'OPENAI_LIKE_API_KEY',
     });
@@ -157,11 +196,12 @@ export default class OpenAILikeProvider extends BaseProvider {
   }): LanguageModelV1 {
     const { model, serverEnv, apiKeys, providerSettings } = options;
     const envRecord = this.convertEnvToRecord(serverEnv);
+    const normalizedEnv = this._applyOpenWebUIAliases(envRecord);
 
     const { baseUrl, apiKey } = this.getProviderBaseUrlAndKey({
       apiKeys,
       providerSettings: providerSettings?.[this.name],
-      serverEnv: envRecord,
+      serverEnv: normalizedEnv,
       defaultBaseUrlKey: 'OPENAI_LIKE_API_BASE_URL',
       defaultApiTokenKey: 'OPENAI_LIKE_API_KEY',
     });

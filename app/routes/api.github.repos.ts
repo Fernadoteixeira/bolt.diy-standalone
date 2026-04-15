@@ -69,6 +69,7 @@ export const loader: LoaderFunction = async ({ request, context }: LoaderFunctio
 
     // Calculate language statistics
     const languageStats: Record<string, number> = {};
+
     let totalStars = 0;
     let totalForks = 0;
 

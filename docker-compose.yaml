@@ -1,4 +1,46 @@
 services:
+  postgres:
+    build:
+      context: .
+      dockerfile: .docker/postgres/Dockerfile
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+    ports:
+      - '127.0.0.1:${POSTGRES_PUBLIC_PORT:-5432}:5432'
+    volumes:
+      - bolt-postgres:/var/lib/postgresql
+      - ./.docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  postgrest:
+    image: postgrest/postgrest:latest
+    environment:
+      - PGRST_DB_URI=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - PGRST_DB_SCHEMA=bolt_ai
+      - PGRST_DB_ANON_ROLE=bolt_anon
+      - PGRST_SERVER_HOST=0.0.0.0
+      - PGRST_SERVER_PORT=3000
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+
   app-prod:
     image: bolt-ai:production
     build:
@@ -17,9 +59,18 @@ services:
       - COMPOSE_PROFILES=production
       # No strictly needed but serving as hints for Coolify
       - PORT=5173
+      # Alibaba DashScope (Qwen Models)
+      - DASHSCOPE_API_KEY
+      - DASHSCOPE_API_BASE_URL
+      - OPENAI_LIKE_API_BASE_URL
+      - OPENAI_LIKE_API_KEY
+      # Other LLM Providers
       - GROQ_API_KEY
       - HuggingFace_API_KEY
       - OPENAI_API_KEY
+      - OPENAI_API_BASE_URL
+      - OPENAI_API_BASE_URLS
+      - OPENAI_API_KEYS
       - ANTHROPIC_API_KEY
       - OPEN_ROUTER_API_KEY
       - GOOGLE_GENERATIVE_AI_API_KEY
@@ -31,6 +82,17 @@ services:
       - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
       - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
       - RUNNING_IN_DOCKER=true
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-OpenAILike}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-qwen-max}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - POSTGREST_URL=http://postgrest:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+      - POSTGRES_VECTOR_DIMENSIONS=${POSTGRES_VECTOR_DIMENSIONS:-256}
+      - LOCAL_MAP_TILE_URL_TEMPLATE=/api/map/tiles/{z}/{x}/{y}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
@@ -42,6 +104,11 @@ services:
       - production
     restart: unless-stopped
     init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
       interval: 10s
@@ -68,9 +135,18 @@ services:
       - CHOKIDAR_USEPOLLING=true
       - WATCHPACK_POLLING=true
       - PORT=5173
+      # Alibaba DashScope (Qwen Models)
+      - DASHSCOPE_API_KEY
+      - DASHSCOPE_API_BASE_URL
+      - OPENAI_LIKE_API_BASE_URL
+      - OPENAI_LIKE_API_KEY
+      # Other LLM Providers
       - GROQ_API_KEY
       - HuggingFace_API_KEY
       - OPENAI_API_KEY
+      - OPENAI_API_BASE_URL
+      - OPENAI_API_BASE_URLS
+      - OPENAI_API_KEYS
       - ANTHROPIC_API_KEY
       - OPEN_ROUTER_API_KEY
       - XAI_API_KEY
@@ -82,6 +158,17 @@ services:
       - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
       - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
       - RUNNING_IN_DOCKER=true
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-OpenAILike}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-qwen-max}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - POSTGREST_URL=http://postgrest:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+      - POSTGRES_VECTOR_DIMENSIONS=${POSTGRES_VECTOR_DIMENSIONS:-256}
+      - LOCAL_MAP_TILE_URL_TEMPLATE=/api/map/tiles/{z}/{x}/{y}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
@@ -99,12 +186,18 @@ services:
         target: /pnpm/store
       - bolt-cache:/app/.cache
       - bolt-data:/root/.config
+      - bolt-wrangler-state:/app/.wrangler
     ports:
       - '5173:5173'
     command: docker-dev-start
     profiles: ['development', 'default']
     restart: unless-stopped
     init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
       interval: 10s
@@ -121,9 +214,19 @@ services:
       - COMPOSE_PROFILES=production
       # No strictly needed but serving as hints for Coolify
       - PORT=5173
+      # Alibaba DashScope (Qwen Models)
+      - DASHSCOPE_API_KEY
+      - DASHSCOPE_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+      - OPENAI_LIKE_API_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+      - OPENAI_LIKE_API_KEY
+      # Local fallback options
       - OLLAMA_API_BASE_URL=http://127.0.0.1:11434
+      - OPENAI_API_BASE_URLS=http://host.docker.internal:12434/v1
+      - OPENAI_API_KEYS=local-openai-compatible
       - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
       - RUNNING_IN_DOCKER=true
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-OpenAILike}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-qwen-max}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     volumes:
@@ -142,20 +245,21 @@ services:
       start_period: 5s
 
 volumes:
-  bolt-data:
+  bolt-postgres:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ${BOLT_DATA_PATH:-./.docker/data}
+      device: ${BOLT_POSTGRES_PATH:-./.docker/postgres/data}
+
+  bolt-data:
+    driver: local
   
   bolt-cache:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${BOLT_CACHE_PATH:-./.docker/cache}
   
   bolt-node-modules:
 
   bolt-pnpm-store:
+
+  bolt-wrangler-state:

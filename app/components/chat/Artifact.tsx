@@ -6,8 +6,8 @@ import { createHighlighter, type BundledLanguage, type BundledTheme, type Highli
 import type { ActionState } from '~/lib/runtime/action-runner';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { classNames } from '~/utils/classNames';
-import { cubicEasingFn } from '~/utils/easings';
 import { WORK_DIR } from '~/utils/constants';
+import { cubicEasingFn } from '~/utils/easings';
 
 const highlighterOptions = {
   langs: ['shell'],
@@ -36,10 +36,12 @@ export const Artifact = memo(({ artifactId }: ArtifactProps) => {
 
   const actions = useStore(
     computed(artifact.runner.actions, (actions) => {
-      // Filter out Supabase actions except for migrations
       return Object.values(actions).filter((action) => {
-        // Exclude actions with type 'supabase' or actions that contain 'supabase' in their content
-        return action.type !== 'supabase' && !(action.type === 'shell' && action.content?.includes('supabase'));
+        return (
+          action.type !== 'supabase' &&
+          action.type !== 'database' &&
+          !(action.type === 'shell' && /supabase|postgres|postgrest/i.test(action.content || ''))
+        );
       });
     }),
   );

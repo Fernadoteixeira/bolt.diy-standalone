@@ -1,9 +1,9 @@
-import type { IProviderSetting } from '~/types/model';
 import { BaseProvider } from './base-provider';
-import type { ModelInfo, ProviderInfo } from './types';
-import * as providers from './registry';
-import { createScopedLogger } from '~/utils/logger';
 import { resolveDefaultProviderName } from './defaults';
+import * as providers from './registry';
+import type { ModelInfo, ProviderInfo } from './types';
+import type { IProviderSetting } from '~/types/model';
+import { createScopedLogger } from '~/utils/logger';
 
 const logger = createScopedLogger('LLMManager');
 export class LLMManager {
@@ -122,6 +122,7 @@ export class LLMManager {
           return dynamicModels;
         }),
     );
+
     const staticModels = Array.from(this._providers.values()).flatMap((p) => p.staticModels || []);
     const dynamicModelsFlat = dynamicModels.flat();
     const dynamicModelKeys = dynamicModelsFlat.map((d) => `${d.name}-${d.provider}`);
@@ -184,6 +185,7 @@ export class LLMManager {
         logger.error(`Error getting dynamic models ${provider.name} :`, err);
         return [];
       });
+
     const dynamicModelsName = dynamicModels.map((d) => d.name);
     const filteredStaticList = staticModels.filter((m) => !dynamicModelsName.includes(m.name));
     const modelList = [...dynamicModels, ...filteredStaticList];
@@ -203,6 +205,7 @@ export class LLMManager {
 
   getDefaultProvider(): BaseProvider {
     const configuredDefaultProviderName = resolveDefaultProviderName(this._env);
+
     const configuredDefaultProvider = Array.from(this._providers.values()).find(
       (provider) => provider.name.toLowerCase() === configuredDefaultProviderName.toLowerCase(),
     );
@@ -217,7 +220,9 @@ export class LLMManager {
       throw new Error('No providers registered');
     }
 
-    logger.warn(`Configured default provider "${configuredDefaultProviderName}" not found. Falling back to ${firstProvider.name}.`);
+    logger.warn(
+      `Configured default provider "${configuredDefaultProviderName}" not found. Falling back to ${firstProvider.name}.`,
+    );
 
     return firstProvider;
   }

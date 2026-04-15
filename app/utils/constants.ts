@@ -1,5 +1,5 @@
-import { LLMManager } from '~/lib/modules/llm/manager';
 import { resolveDefaultModelName } from '~/lib/modules/llm/defaults';
+import { LLMManager } from '~/lib/modules/llm/manager';
 import type { Template } from '~/types/template';
 
 export const WORK_DIR_NAME = 'project';
