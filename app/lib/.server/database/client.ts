@@ -52,7 +52,6 @@ export async function postgrestRpc<T>(
   }
 
   const candidates = buildPostgrestCandidates(apiUrl);
-
   let lastError: unknown;
 
   for (const candidate of candidates) {
@@ -95,7 +94,7 @@ export async function postgrestRpc<T>(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error(`PostgREST RPC ${name} failed`);
+  throw (lastError instanceof Error ? lastError : new Error(`PostgREST RPC ${name} failed`));
 }
 
 export async function getDatabaseHealth(source?: EnvironmentSource) {

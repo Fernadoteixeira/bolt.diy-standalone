@@ -1,0 +1,620 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { Message } from '~/types/message';
+import type { Artifact, Action } from '~/lib/runtime/message-parser';
+
+/**
+ * E2E Tests for Multi-Agent Workflows
+ * 
+ * Tests scenarios where multiple AI agents collaborate on complex tasks
+ */
+
+// Mock types for multi-agent system
+interface Agent {
+  id: string;
+  role: 'orchestrator' | 'coder' | 'reviewer' | 'tester' | 'deployer';
+  provider: string;
+  model: string;
+  status: 'idle' | 'working' | 'done' | 'error';
+  lastMessage?: Message;
+}
+
+interface Task {
+  id: string;
+  description: string;
+  assignedTo: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  result?: any;
+}
+
+interface SwarmState {
+  agents: Agent[];
+  tasks: Task[];
+  conversation: Message[];
+  artifacts: Artifact[];
+}
+
+describe('Multi-Agent E2E Tests', () => {
+  describe('Agent Orchestration', () => {
+    it('should coordinate multiple agents on a complex task', async () => {
+      const swarmState: SwarmState = {
+        agents: [
+          { id: 'agent-1', role: 'orchestrator', provider: 'Ollama', model: 'gemma:7b', status: 'idle' },
+          { id: 'agent-2', role: 'coder', provider: 'Ollama', model: 'codellama:7b', status: 'idle' },
+          { id: 'agent-3', role: 'reviewer', provider: 'Ollama', model: 'llama3.2:3b', status: 'idle' },
+          { id: 'agent-4', role: 'tester', provider: 'Ollama', model: 'gemma:7b', status: 'idle' },
+        ],
+        tasks: [],
+        conversation: [],
+        artifacts: [],
+      };
+
+      // Simulate orchestrator assigning tasks
+      swarmState.tasks = [
+        {
+          id: 'task-1',
+          description: 'Create React component',
+          assignedTo: 'agent-2',
+          status: 'pending',
+        },
+        {
+          id: 'task-2',
+          description: 'Review code quality',
+          assignedTo: 'agent-3',
+          status: 'pending',
+        },
+        {
+          id: 'task-3',
+          description: 'Write unit tests',
+          assignedTo: 'agent-4',
+          status: 'pending',
+        },
+      ];
+
+      // Execute task 1: Coder creates component
+      swarmState.tasks[0].status = 'in_progress';
+      swarmState.agents[1].status = 'working';
+
+      // Simulate agent response
+      const coderMessage: Message = {
+        role: 'assistant',
+        content: `I'll create the Button component.
+
+app/components/Button.tsx:
+
+\`\`\`tsx
+import React from 'react';
+
+interface ButtonProps {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+export const Button: React.FC<ButtonProps> = ({ 
+  children, 
+  onClick,
+  disabled = false 
+}) => {
+  return (
+    <button 
+      onClick={onClick} 
+      className="btn"
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+};
+\`\`\``,
+      };
+
+      swarmState.conversation.push(coderMessage);
+      swarmState.tasks[0].status = 'completed';
+      swarmState.agents[1].status = 'done';
+
+      // Execute task 2: Reviewer checks code
+      swarmState.tasks[1].status = 'in_progress';
+      swarmState.agents[2].status = 'working';
+
+      const reviewerMessage: Message = {
+        role: 'assistant',
+        content: 'Code review complete. The component follows best practices:\n- Proper TypeScript typing\n- Accessible button implementation\n- Clean prop interface\n\nApproved for merge.',
+      };
+
+      swarmState.conversation.push(reviewerMessage);
+      swarmState.tasks[1].status = 'completed';
+      swarmState.agents[2].status = 'done';
+
+      // Execute task 3: Tester writes tests
+      swarmState.tasks[2].status = 'in_progress';
+      swarmState.agents[3].status = 'working';
+
+      const testerMessage: Message = {
+        role: 'assistant',
+        content: `Writing unit tests:
+
+app/components/Button.spec.tsx:
+
+\`\`\`tsx
+import { render, screen } from '@testing-library/react';
+import { Button } from './Button';
+
+describe('Button', () => {
+  it('renders children correctly', () => {
+    render(<Button onClick={() => {}}>Click me</Button>);
+    expect(screen.getByText('Click me')).toBeInTheDocument();
+  });
+
+  it('calls onClick when clicked', () => {
+    const handleClick = vi.fn();
+    render(<Button onClick={handleClick}>Click</Button>);
+    screen.getByText('Click').click();
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('respects disabled state', () => {
+    render(<Button onClick={() => {}} disabled>Disabled</Button>);
+    expect(screen.getByText('Disabled')).toBeDisabled();
+  });
+});
+\`\`\``,
+      };
+
+      swarmState.conversation.push(testerMessage);
+      swarmState.tasks[2].status = 'completed';
+      swarmState.agents[3].status = 'done';
+
+      // Verify final state
+      expect(swarmState.tasks.every((t) => t.status === 'completed')).toBe(true);
+      expect(swarmState.agents.every((a) => a.status === 'done')).toBe(true);
+      expect(swarmState.conversation.length).toBe(3);
+    });
+
+    it('should handle agent failures and reassignment', async () => {
+      const swarmState: SwarmState = {
+        agents: [
+          { id: 'agent-1', role: 'orchestrator', provider: 'Ollama', model: 'gemma:7b', status: 'idle' },
+          { id: 'agent-2', role: 'coder', provider: 'Ollama', model: 'codellama:7b', status: 'idle' },
+          { id: 'agent-3', role: 'coder', provider: 'Ollama', model: 'llama3.2:3b', status: 'idle' }, // Backup coder
+        ],
+        tasks: [
+          {
+            id: 'task-1',
+            description: 'Create API endpoint',
+            assignedTo: 'agent-2',
+            status: 'pending',
+          },
+        ],
+        conversation: [],
+        artifacts: [],
+      };
+
+      // Agent 2 fails
+      swarmState.tasks[0].status = 'in_progress';
+      swarmState.agents[1].status = 'error';
+
+      // Orchestrator reassigns to agent 3
+      swarmState.tasks[0].assignedTo = 'agent-3';
+      swarmState.agents[2].status = 'working';
+
+      // Agent 3 completes task
+      const backupCoderMessage: Message = {
+        role: 'assistant',
+        content: `Creating the API endpoint:
+
+app/routes/api.users.ts:
+
+\`\`\`typescript
+import { json } from '@remix-run/cloudflare';
+
+export async function loader() {
+  const users = [{ id: 1, name: 'John' }];
+  return json({ users });
+}
+\`\`\``,
+      };
+
+      swarmState.conversation.push(backupCoderMessage);
+      swarmState.tasks[0].status = 'completed';
+      swarmState.agents[2].status = 'done';
+
+      // Verify recovery
+      expect(swarmState.tasks[0].status).toBe('completed');
+      expect(swarmState.tasks[0].assignedTo).toBe('agent-3');
+    });
+
+    it('should manage concurrent agent execution', async () => {
+      const swarmState: SwarmState = {
+        agents: [
+          { id: 'agent-1', role: 'orchestrator', provider: 'Ollama', model: 'gemma:7b', status: 'idle' },
+          { id: 'agent-2', role: 'coder', provider: 'Ollama', model: 'codellama:7b', status: 'idle' },
+          { id: 'agent-3', role: 'coder', provider: 'Ollama', model: 'codellama:7b', status: 'idle' },
+          { id: 'agent-4', role: 'tester', provider: 'Ollama', model: 'gemma:7b', status: 'idle' },
+        ],
+        tasks: [
+          { id: 'task-1', description: 'Create Component A', assignedTo: 'agent-2', status: 'pending' },
+          { id: 'task-2', description: 'Create Component B', assignedTo: 'agent-3', status: 'pending' },
+        ],
+        conversation: [],
+        artifacts: [],
+      };
+
+      // Execute tasks concurrently
+      swarmState.tasks.forEach((task) => {
+        task.status = 'in_progress';
+      });
+      swarmState.agents[1].status = 'working';
+      swarmState.agents[2].status = 'working';
+
+      // Simulate concurrent completion
+      await Promise.all([
+        new Promise<void>((resolve) => {
+          swarmState.conversation.push({
+            role: 'assistant',
+            content: 'Component A created',
+          });
+          swarmState.tasks[0].status = 'completed';
+          resolve();
+        }),
+        new Promise<void>((resolve) => {
+          swarmState.conversation.push({
+            role: 'assistant',
+            content: 'Component B created',
+          });
+          swarmState.tasks[1].status = 'completed';
+          resolve();
+        }),
+      ]);
+
+      swarmState.agents[1].status = 'done';
+      swarmState.agents[2].status = 'done';
+
+      // Verify concurrent execution
+      expect(swarmState.tasks.every((t) => t.status === 'completed')).toBe(true);
+      expect(swarmState.conversation.length).toBe(2);
+    });
+  });
+
+  describe('Swarm Communication Patterns', () => {
+    it('should handle request-response pattern between agents', async () => {
+      const conversation: Message[] = [];
+
+      // Agent A requests help
+      conversation.push({
+        role: 'assistant',
+        content: 'I need help with the database schema. Can someone review it?',
+        metadata: { agentId: 'agent-1', requestId: 'req-1' },
+      });
+
+      // Agent B responds
+      conversation.push({
+        role: 'assistant',
+        content: 'I can help. The schema looks good, but consider adding indexes.',
+        metadata: { agentId: 'agent-2', inResponseTo: 'req-1' },
+      });
+
+      // Agent A acknowledges
+      conversation.push({
+        role: 'assistant',
+        content: 'Thanks! I will add the indexes.',
+        metadata: { agentId: 'agent-1', inResponseTo: 'req-1' },
+      });
+
+      // Verify conversation flow
+      expect(conversation.length).toBe(3);
+      expect(conversation[1].metadata?.inResponseTo).toBe('req-1');
+      expect(conversation[2].metadata?.inResponseTo).toBe('req-1');
+    });
+
+    it('should handle broadcast pattern for announcements', async () => {
+      const agents = ['agent-1', 'agent-2', 'agent-3', 'agent-4'];
+      const announcements: { agentId: string; message: string }[] = [];
+
+      // Orchestrator broadcasts
+      const broadcastMessage = 'Deployment starting in 5 minutes';
+      agents.forEach((agentId) => {
+        announcements.push({ agentId, message: broadcastMessage });
+      });
+
+      // All agents acknowledge
+      const acknowledgments = announcements.map((announcement) => ({
+        agentId: announcement.agentId,
+        message: `Acknowledged: ${announcement.message}`,
+      }));
+
+      expect(acknowledgments.length).toBe(agents.length);
+      expect(acknowledgments.every((a) => a.message.includes('Deployment'))).toBe(true);
+    });
+
+    it('should handle chain of command pattern', async () => {
+      const chain: { agentId: string; action: string; timestamp: number }[] = [];
+
+      // Orchestrator -> Lead Coder -> Coder -> Tester
+      const workflow = [
+        { agentId: 'orchestrator', action: 'Assign task' },
+        { agentId: 'lead-coder', action: 'Review requirements' },
+        { agentId: 'coder', action: 'Implement feature' },
+        { agentId: 'tester', action: 'Write tests' },
+      ];
+
+      workflow.forEach((step, index) => {
+        chain.push({
+          agentId: step.agentId,
+          action: step.action,
+          timestamp: Date.now() + index * 100,
+        });
+      });
+
+      // Verify chain order
+      expect(chain.map((c) => c.agentId)).toEqual([
+        'orchestrator',
+        'lead-coder',
+        'coder',
+        'tester',
+      ]);
+
+      // Verify timestamps are sequential
+      for (let i = 1; i < chain.length; i++) {
+        expect(chain[i].timestamp).toBeGreaterThan(chain[i - 1].timestamp);
+      }
+    });
+  });
+
+  describe('Task Distribution and Load Balancing', () => {
+    it('should distribute tasks evenly across agents', async () => {
+      const agents = [
+        { id: 'agent-1', tasksCompleted: 0 },
+        { id: 'agent-2', tasksCompleted: 0 },
+        { id: 'agent-3', tasksCompleted: 0 },
+      ];
+
+      const tasks = Array.from({ length: 9 }, (_, i) => ({
+        id: `task-${i}`,
+        description: `Task ${i}`,
+        assignedTo: agents[i % agents.length].id,
+      }));
+
+      // Distribute tasks
+      tasks.forEach((task) => {
+        const agent = agents.find((a) => a.id === task.assignedTo);
+        if (agent) {
+          agent.tasksCompleted++;
+        }
+      });
+
+      // Verify even distribution
+      expect(agents.every((a) => a.tasksCompleted === 3)).toBe(true);
+    });
+
+    it('should balance load based on agent capacity', async () => {
+      const agents = [
+        { id: 'agent-1', capacity: 5, currentLoad: 0 },
+        { id: 'agent-2', capacity: 10, currentLoad: 0 },
+        { id: 'agent-3', capacity: 15, currentLoad: 0 },
+      ];
+
+      const totalCapacity = agents.reduce((sum, a) => sum + a.capacity, 0);
+      const tasksToAssign = totalCapacity;
+
+      // Assign tasks proportionally
+      let taskIndex = 0;
+      agents.forEach((agent) => {
+        const tasksForAgent = Math.floor((agent.capacity / totalCapacity) * tasksToAssign);
+        for (let i = 0; i < tasksForAgent; i++) {
+          agent.currentLoad++;
+          taskIndex++;
+        }
+      });
+
+      // Verify load matches capacity
+      expect(agents[0].currentLoad).toBe(5);
+      expect(agents[1].currentLoad).toBe(10);
+      expect(agents[2].currentLoad).toBe(15);
+    });
+
+    it('should handle agent overload and redistribute tasks', async () => {
+      const agents = [
+        { id: 'agent-1', maxCapacity: 3, currentLoad: 0, status: 'idle' },
+        { id: 'agent-2', maxCapacity: 3, currentLoad: 0, status: 'idle' },
+      ];
+
+      const pendingTasks = Array.from({ length: 6 }, (_, i) => ({
+        id: `task-${i}`,
+        status: 'pending',
+      }));
+
+      // Assign tasks until agent 1 is overloaded
+      pendingTasks.forEach((task, index) => {
+        if (index < 3) {
+          agents[0].currentLoad++;
+          task.status = 'assigned';
+        } else {
+          // Agent 1 overloaded, assign to agent 2
+          agents[1].currentLoad++;
+          task.status = 'assigned';
+        }
+      });
+
+      // Verify redistribution
+      expect(agents[0].currentLoad).toBe(3);
+      expect(agents[1].currentLoad).toBe(3);
+      expect(pendingTasks.every((t) => t.status === 'assigned')).toBe(true);
+    });
+  });
+
+  describe('Artifact Management in Multi-Agent Context', () => {
+    it('should track artifacts created by different agents', async () => {
+      const artifacts: Artifact & { createdBy: string }[] = [];
+
+      // Agent 1 creates component
+      artifacts.push({
+        id: 'artifact-1',
+        title: 'Button.tsx',
+        type: 'file',
+        createdBy: 'agent-coder',
+      });
+
+      // Agent 2 creates tests
+      artifacts.push({
+        id: 'artifact-2',
+        title: 'Button.spec.tsx',
+        type: 'file',
+        createdBy: 'agent-tester',
+      });
+
+      // Agent 3 creates documentation
+      artifacts.push({
+        id: 'artifact-3',
+        title: 'README.md',
+        type: 'file',
+        createdBy: 'agent-writer',
+      });
+
+      // Verify artifact tracking
+      expect(artifacts.length).toBe(3);
+      expect(artifacts.map((a) => a.createdBy)).toEqual([
+        'agent-coder',
+        'agent-tester',
+        'agent-writer',
+      ]);
+    });
+
+    it('should handle artifact dependencies between agents', async () => {
+      const artifacts: { id: string; name: string; dependencies: string[]; status: string }[] = [];
+
+      // Create base component
+      artifacts.push({
+        id: 'artifact-1',
+        name: 'BaseComponent.tsx',
+        dependencies: [],
+        status: 'completed',
+      });
+
+      // Create extended component (depends on base)
+      artifacts.push({
+        id: 'artifact-2',
+        name: 'ExtendedComponent.tsx',
+        dependencies: ['artifact-1'],
+        status: 'pending',
+      });
+
+      // Create styles (depends on both)
+      artifacts.push({
+        id: 'artifact-3',
+        name: 'styles.css',
+        dependencies: ['artifact-1', 'artifact-2'],
+        status: 'pending',
+      });
+
+      // Resolve dependencies
+      artifacts[1].status = 'completed'; // ExtendedComponent
+      artifacts[2].status = 'completed'; // styles
+
+      // Verify dependency chain
+      expect(artifacts.every((a) => a.status === 'completed')).toBe(true);
+      expect(artifacts[2].dependencies).toHaveLength(2);
+    });
+  });
+
+  describe('Error Handling and Recovery', () => {
+    it('should handle agent timeout and retry', async () => {
+      const agent = { id: 'agent-1', status: 'idle', retries: 0, maxRetries: 3 };
+
+      // Simulate timeout
+      const executeWithRetry = async (): Promise<boolean> => {
+        for (let i = 0; i < agent.maxRetries; i++) {
+          agent.retries++;
+          // Simulate eventual success on 3rd try
+          if (agent.retries === 3) {
+            agent.status = 'done';
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const result = await executeWithRetry();
+
+      expect(result).toBe(true);
+      expect(agent.retries).toBe(3);
+      expect(agent.status).toBe('done');
+    });
+
+    it('should handle cascading failures', async () => {
+      const agents = [
+        { id: 'agent-1', status: 'idle', role: 'upstream' },
+        { id: 'agent-2', status: 'idle', role: 'downstream' },
+      ];
+
+      // Agent 1 fails
+      agents[0].status = 'error';
+
+      // Agent 2 should detect upstream failure
+      if (agents[0].status === 'error') {
+        agents[1].status = 'blocked';
+      }
+
+      // Recovery: Restart agent 1
+      agents[0].status = 'idle';
+
+      // Agent 2 can proceed
+      if (agents[0].status === 'idle') {
+        agents[1].status = 'working';
+      }
+
+      // Verify recovery
+      expect(agents[0].status).toBe('idle');
+      expect(agents[1].status).toBe('working');
+    });
+  });
+
+  describe('Performance Metrics', () => {
+    it('should track execution time per agent', async () => {
+      const metrics: { agentId: string; startTime: number; endTime: number; duration: number }[] = [];
+
+      const agents = ['agent-1', 'agent-2', 'agent-3'];
+
+      // Simulate agent execution
+      await Promise.all(
+        agents.map(async (agentId, index) => {
+          const startTime = Date.now();
+          await new Promise((resolve) => setTimeout(resolve, (index + 1) * 100));
+          const endTime = Date.now();
+
+          metrics.push({
+            agentId,
+            startTime,
+            endTime,
+            duration: endTime - startTime,
+          });
+        }),
+      );
+
+      // Verify metrics collection
+      expect(metrics.length).toBe(3);
+      expect(metrics.every((m) => m.duration > 0)).toBe(true);
+
+      // Verify execution order affects duration
+      expect(metrics[0].duration).toBeLessThan(metrics[2].duration);
+    });
+
+    it('should track message throughput', async () => {
+      const messages: { timestamp: number }[] = [];
+      const messageCount = 100;
+
+      // Simulate high-throughput messaging
+      const startTime = Date.now();
+      for (let i = 0; i < messageCount; i++) {
+        messages.push({ timestamp: Date.now() });
+      }
+      const endTime = Date.now();
+
+      const throughput = messageCount / (endTime - startTime);
+
+      expect(messages.length).toBe(messageCount);
+      expect(throughput).toBeGreaterThan(0);
+
+      console.log(`Message throughput: ${throughput.toFixed(2)} msg/ms`);
+    });
+  });
+});

@@ -6,6 +6,8 @@
  * This script provides hot-reload development mode for Electron applications.
  * It automatically builds Electron dependencies, starts the Remix development server,
  * and launches the Electron application with hot-reload capabilities.
+ * 
+ * Usage: pnpm run electron:dev
  */
 
 import { spawn, exec } from 'node:child_process';
@@ -24,9 +26,11 @@ const MAX_RETRIES = 30;
 
 // Set environment variables
 process.env.NODE_ENV = 'development';
+process.env.STARTUP_MODE = 'electron';
 
 console.log('🚀 Starting Electron hot-reload development mode...');
 console.log('🔧 Environment:', process.env.NODE_ENV);
+console.log('📱 Startup Mode: Electron (Desktop App)');
 
 let electronProcess = null;
 let remixProcess = null;

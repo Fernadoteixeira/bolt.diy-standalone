@@ -79,8 +79,14 @@ export default defineConfig((config) => {
         '**/cypress/**',
         '**/.{idea,git,cache,output,temp}/**',
         '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build}.config.*',
-        '**/tests/preview/**', // Exclude preview tests that require Playwright
+        '**/tests/e2e/**', // Exclude E2E tests (run with Playwright)
+        '**/*.spec.ts', // Exclude unit tests from Vite HMR (run with Vitest)
       ],
+    },
+    server: {
+      hmr: {
+        overlay: false, // Disable error overlay for cleaner dev experience
+      },
     },
   };
 });

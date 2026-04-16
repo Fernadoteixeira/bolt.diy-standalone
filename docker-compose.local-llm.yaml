@@ -1,0 +1,371 @@
+# ======================================
+# Bolt.diy Docker Compose with Local LLM Support
+# ======================================
+# This configuration includes optional bundled Ollama for local LLM support
+# 
+# Usage:
+#   - With local LLM: docker-compose --profile local-llm up -d
+#   - Without local LLM: docker-compose --profile production up -d
+#   - All services: docker-compose --profile all up -d
+#
+# Features:
+#   - Auto-discovery of local providers
+#   - Bundled Ollama service (optional)
+#   - GPU support for Ollama (if available)
+#   - Persistent model storage
+# ======================================
+
+services:
+  # ======================================
+  # PostgreSQL Database
+  # ======================================
+  postgres:
+    build:
+      context: .
+      dockerfile: .docker/postgres/Dockerfile
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+    ports:
+      - '127.0.0.1:${POSTGRES_PUBLIC_PORT:-5432}:5432'
+    volumes:
+      - bolt-postgres:/var/lib/postgresql
+      - ./.docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    profiles:
+      - production
+      - development
+      - local-llm
+      - all
+
+  # ======================================
+  # PostgREST API
+  # ======================================
+  postgrest:
+    image: postgrest/postgrest:latest
+    environment:
+      - PGRST_DB_URI=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - PGRST_DB_SCHEMA=bolt_ai
+      - PGRST_DB_ANON_ROLE=bolt_anon
+      - PGRST_SERVER_HOST=0.0.0.0
+      - PGRST_SERVER_PORT=3000
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - production
+      - development
+      - local-llm
+      - all
+
+  # ======================================
+  # Ollama Local LLM Service (Optional)
+  # ======================================
+  # Enable with: docker-compose --profile local-llm up -d
+  # This provides local LLM inference with automatic model management
+  ollama-local:
+    image: ollama/ollama:latest
+    container_name: bolt-ollama
+    volumes:
+      - ollama-models:/root/.ollama
+      - ollama-data:/root/.ollama/data
+    ports:
+      - '127.0.0.1:11434:11434'
+    environment:
+      # Keep models loaded in memory for 24 hours
+      - OLLAMA_KEEP_ALIVE=24h
+      # Number of parallel requests to handle
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_NUM_PARALLEL:-2}
+      # Maximum number of loaded models
+      - OLLAMA_MAX_LOADED_MODELS=${OLLAMA_MAX_LOADED_MODELS:-3}
+      # Enable debug logging (optional)
+      - OLLAMA_DEBUG=${OLLAMA_DEBUG:-false}
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:11434/api/tags']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            # GPU support (NVIDIA)
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          # Memory limit for Ollama
+          memory: 8G
+    profiles:
+      - local-llm
+      - all
+
+  # ======================================
+  # LMStudio Server (Optional - Bring Your Own)
+  # ======================================
+  # LMStudio must be installed separately on your host machine
+  # This configuration just documents the expected setup
+  # 
+  # To use LMStudio:
+  # 1. Install LMStudio from https://lmstudio.ai/
+  # 2. Start the local server (Port 1234)
+  # 3. Enable CORS in LMStudio settings
+  # 4. Bolt will auto-detect at http://host.docker.internal:1234
+  #
+  # No container needed - runs on host
+
+  # ======================================
+  # Bolt.diy Application - Production
+  # ======================================
+  app-prod:
+    image: bolt-ai:production
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: bolt-ai-production
+    ports:
+      - '5173:5173'
+    env_file:
+      - path: '.env'
+        required: false
+      - path: '.env.local'
+        required: false
+    environment:
+      - NODE_ENV=production
+      - COMPOSE_PROFILES=production
+      - PORT=5173
+      
+      # Alibaba DashScope (Qwen Models)
+      - DASHSCOPE_API_KEY
+      - DASHSCOPE_API_BASE_URL
+      - OPENAI_LIKE_API_BASE_URL
+      - OPENAI_LIKE_API_KEY
+      
+      # Other LLM Providers
+      - GROQ_API_KEY
+      - HuggingFace_API_KEY
+      - OPENAI_API_KEY
+      - OPENAI_API_BASE_URL
+      - OPENAI_API_BASE_URLS
+      - OPENAI_API_KEYS
+      - ANTHROPIC_API_KEY
+      - OPEN_ROUTER_API_KEY
+      - GOOGLE_GENERATIVE_AI_API_KEY
+      - OLLAMA_API_BASE_URL
+      - XAI_API_KEY
+      - TOGETHER_API_KEY
+      - TOGETHER_API_BASE_URL
+      - AWS_BEDROCK_CONFIG
+      
+      # Application Settings
+      - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
+      - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
+      - RUNNING_IN_DOCKER=true
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-OpenAILike}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-qwen-max}
+      
+      # Database Configuration
+      - DATABASE_URL=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - POSTGREST_URL=http://postgrest:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+      - POSTGRES_VECTOR_DIMENSIONS=${POSTGRES_VECTOR_DIMENSIONS:-256}
+      - LOCAL_MAP_TILE_URL_TEMPLATE=/api/map/tiles/{z}/{x}/{y}
+    
+    # Enable access to host services (for local LLM providers)
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    
+    volumes:
+      # Persistent data volumes
+      - bolt-data:/root/.config  # Wrangler config and cache
+      - bolt-cache:/app/.cache   # Build cache
+    
+    command: pnpm run dockerstart
+    profiles:
+      - production
+      - local-llm
+      - all
+    
+    restart: unless-stopped
+    init: true
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+      ollama-local:
+        condition: service_healthy
+        required: false
+    
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ======================================
+  # Bolt.diy Application - Development
+  # ======================================
+  app-dev:
+    image: bolt-ai:development
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - path: '.env'
+        required: false
+      - path: '.env.local'
+        required: false
+    environment:
+      - NODE_ENV=development
+      - VITE_HMR_PROTOCOL=ws
+      - VITE_HMR_HOST=localhost
+      - VITE_HMR_PORT=5173
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+      - PORT=5173
+      
+      # Alibaba DashScope (Qwen Models)
+      - DASHSCOPE_API_KEY
+      - DASHSCOPE_API_BASE_URL
+      - OPENAI_LIKE_API_BASE_URL
+      - OPENAI_LIKE_API_KEY
+      
+      # Other LLM Providers
+      - GROQ_API_KEY
+      - HuggingFace_API_KEY
+      - OPENAI_API_KEY
+      - OPENAI_API_BASE_URL
+      - OPENAI_API_BASE_URLS
+      - OPENAI_API_KEYS
+      - ANTHROPIC_API_KEY
+      - OPEN_ROUTER_API_KEY
+      - XAI_API_KEY
+      - GOOGLE_GENERATIVE_AI_API_KEY
+      - OLLAMA_API_BASE_URL
+      - TOGETHER_API_KEY
+      - TOGETHER_API_BASE_URL
+      - AWS_BEDROCK_CONFIG
+      
+      # Application Settings
+      - VITE_LOG_LEVEL=${VITE_LOG_LEVEL:-debug}
+      - DEFAULT_NUM_CTX=${DEFAULT_NUM_CTX:-32768}
+      - RUNNING_IN_DOCKER=true
+      - DEFAULT_LLM_PROVIDER=${DEFAULT_LLM_PROVIDER:-OpenAILike}
+      - DEFAULT_LLM_MODEL=${DEFAULT_LLM_MODEL:-qwen-max}
+      
+      # Database Configuration
+      - DATABASE_URL=postgres://${POSTGRES_USER:-bolt}:${POSTGRES_PASSWORD:-bolt}@postgres:5432/${POSTGRES_DB:-bolt}
+      - POSTGREST_URL=http://postgrest:3000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-bolt}
+      - POSTGRES_USER=${POSTGRES_USER:-bolt}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-bolt}
+      - POSTGRES_VECTOR_DIMENSIONS=${POSTGRES_VECTOR_DIMENSIONS:-256}
+      - LOCAL_MAP_TILE_URL_TEMPLATE=/api/map/tiles/{z}/{x}/{y}
+    
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    
+    volumes:
+      - type: bind
+        source: .
+        target: /app
+        consistency: cached
+      - type: volume
+        source: bolt-node-modules
+        target: /app/node_modules
+        volume:
+          nocopy: true
+      - type: volume
+        source: bolt-pnpm-store
+        target: /pnpm/store
+      - bolt-cache:/app/.cache
+      - bolt-data:/root/.config
+      - bolt-wrangler-state:/app/.wrangler
+    
+    ports:
+      - '5173:5173'
+    
+    command: docker-dev-start
+    profiles: ['development', 'local-llm', 'all']
+    
+    restart: unless-stopped
+    init: true
+    
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgrest:
+        condition: service_started
+      ollama-local:
+        condition: service_healthy
+        required: false
+    
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5173/"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+
+# ======================================
+# Named Volumes
+# ======================================
+volumes:
+  # PostgreSQL data
+  bolt-postgres:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BOLT_POSTGRES_PATH:-./.docker/postgres/data}
+  
+  # Ollama models and data (persistent across container restarts)
+  ollama-models:
+    driver: local
+    name: bolt-ollama-models
+  
+  ollama-data:
+    driver: local
+    name: bolt-ollama-data
+  
+  # Application data
+  bolt-data:
+    driver: local
+  
+  bolt-cache:
+    driver: local
+  
+  bolt-node-modules:
+  
+  bolt-pnpm-store:
+  
+  bolt-wrangler-state:

@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: resolve('electron/main/index.ts'),
-      formats: ['cjs'],
+      formats: ['es'],
     },
     rollupOptions: {
       external: [
@@ -34,8 +34,8 @@ export default defineConfig({
       ],
       output: {
         dir: 'build/electron',
-        entryFileNames: 'main/[name].cjs',
-        format: 'cjs',
+        entryFileNames: 'main/[name].mjs',
+        format: 'es',
       },
     },
     minify: false,
