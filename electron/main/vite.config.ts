@@ -35,7 +35,7 @@ export default defineConfig({
       output: {
         dir: 'build/electron',
         entryFileNames: 'main/[name].mjs',
-        format: 'esm',
+        format: 'es',
       },
     },
     minify: false,

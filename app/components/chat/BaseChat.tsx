@@ -2,37 +2,38 @@
  * @ts-nocheck
  * Preventing TS checks with files presented in the video for a better presentation.
  */
+import { useStore } from '@nanostores/react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import type { JSONValue, Message } from 'ai';
+import Cookies from 'js-cookie';
 import React, { type RefCallback, useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
+import { getApiKeysFromCookies } from './APIKeyManager';
+import styles from './BaseChat.module.scss';
+import ChatAlert from './ChatAlert';
+import { ChatBox } from './ChatBox';
+import GitCloneButton from './GitCloneButton';
+import LlmErrorAlert from './LLMApiAlert';
+import { Messages } from './Messages.client';
+import ProgressCompilation from './ProgressCompilation';
+import StarterTemplates from './StarterTemplates';
+import { DatabaseChatAlert } from '~/components/chat/DatabaseAlert';
+import { ExamplePrompts } from '~/components/chat/ExamplePrompts';
+import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
+import DeployChatAlert from '~/components/deploy/DeployAlert';
 import { Menu } from '~/components/sidebar/Menu.client';
+import type { ElementInfo } from '~/components/workbench/Inspector';
 import { Workbench } from '~/components/workbench/Workbench.client';
+import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
+import type { ModelInfo } from '~/lib/modules/llm/types';
+import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
+import type { DatabaseAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
+import type { ActionAlert } from '~/types/actions';
+import type { ProgressAnnotation } from '~/types/context';
+import type { DesignScheme } from '~/types/design-scheme';
+import type { ProviderInfo } from '~/types/model';
 import { classNames } from '~/utils/classNames';
 import { PROVIDER_LIST } from '~/utils/constants';
-import { Messages } from './Messages.client';
-import { getApiKeysFromCookies } from './APIKeyManager';
-import Cookies from 'js-cookie';
-import * as Tooltip from '@radix-ui/react-tooltip';
-import styles from './BaseChat.module.scss';
-import { ImportButtons } from '~/components/chat/chatExportAndImport/ImportButtons';
-import { ExamplePrompts } from '~/components/chat/ExamplePrompts';
-import GitCloneButton from './GitCloneButton';
-import type { ProviderInfo } from '~/types/model';
-import StarterTemplates from './StarterTemplates';
-import type { ActionAlert, SupabaseAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
-import DeployChatAlert from '~/components/deploy/DeployAlert';
-import ChatAlert from './ChatAlert';
-import type { ModelInfo } from '~/lib/modules/llm/types';
-import ProgressCompilation from './ProgressCompilation';
-import type { ProgressAnnotation } from '~/types/context';
-import { SupabaseChatAlert } from '~/components/chat/SupabaseAlert';
-import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
-import { useStore } from '@nanostores/react';
-import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
-import { ChatBox } from './ChatBox';
-import type { DesignScheme } from '~/types/design-scheme';
-import type { ElementInfo } from '~/components/workbench/Inspector';
-import LlmErrorAlert from './LLMApiAlert';
 
 const TEXTAREA_MIN_HEIGHT = 76;
 
@@ -66,8 +67,8 @@ interface BaseChatProps {
   setImageDataList?: (dataList: string[]) => void;
   actionAlert?: ActionAlert;
   clearAlert?: () => void;
-  supabaseAlert?: SupabaseAlert;
-  clearSupabaseAlert?: () => void;
+  databaseAlert?: DatabaseAlert;
+  clearDatabaseAlert?: () => void;
   deployAlert?: DeployAlert;
   clearDeployAlert?: () => void;
   llmErrorAlert?: LlmErrorAlertType;
@@ -116,8 +117,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       clearAlert,
       deployAlert,
       clearDeployAlert,
-      supabaseAlert,
-      clearSupabaseAlert,
+      databaseAlert,
+      clearDatabaseAlert,
       llmErrorAlert,
       clearLlmErrorAlert,
       data,
@@ -215,7 +216,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
         setIsModelLoading('all');
         fetch('/api/models')
-          .then((response) => response.json())
+          .then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            return response.json();
+          })
           .then((data) => {
             const typedData = data as { modelList: ModelInfo[] };
             setModelList(typedData.modelList);
@@ -240,6 +247,11 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
       try {
         const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
         const data = await response.json();
         providerModels = (data as { modelList: ModelInfo[] }).modelList;
       } catch (error) {
@@ -399,17 +411,17 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       clearAlert={() => clearDeployAlert?.()}
                       postMessage={(message: string | undefined) => {
                         sendMessage?.({} as any, message);
-                        clearSupabaseAlert?.();
+                        clearDatabaseAlert?.();
                       }}
                     />
                   )}
-                  {supabaseAlert && (
-                    <SupabaseChatAlert
-                      alert={supabaseAlert}
-                      clearAlert={() => clearSupabaseAlert?.()}
+                  {databaseAlert && (
+                    <DatabaseChatAlert
+                      alert={databaseAlert}
+                      clearAlert={() => clearDatabaseAlert?.()}
                       postMessage={(message) => {
                         sendMessage?.({} as any, message);
-                        clearSupabaseAlert?.();
+                        clearDatabaseAlert?.();
                       }}
                     />
                   )}

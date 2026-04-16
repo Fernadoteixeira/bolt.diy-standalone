@@ -6,6 +6,8 @@
  * This script provides hot-reload development mode for Electron applications.
  * It automatically builds Electron dependencies, starts the Remix development server,
  * and launches the Electron application with hot-reload capabilities.
+ * 
+ * Usage: pnpm run electron:dev
  */
 
 import { spawn, exec } from 'node:child_process';
@@ -24,9 +26,11 @@ const MAX_RETRIES = 30;
 
 // Set environment variables
 process.env.NODE_ENV = 'development';
+process.env.STARTUP_MODE = 'electron';
 
 console.log('🚀 Starting Electron hot-reload development mode...');
 console.log('🔧 Environment:', process.env.NODE_ENV);
+console.log('📱 Startup Mode: Electron (Desktop App)');
 
 let electronProcess = null;
 let remixProcess = null;
@@ -63,7 +67,7 @@ async function waitForServer(port, serverName) {
     let retries = 0;
 
     const checkServer = () => {
-      exec(`lsof -i :${port}`, (error, stdout) => {
+      exec(`netstat -ano | findstr :${port}`, (error, stdout) => {
         if (stdout) {
           console.log(`✅ ${serverName} started`);
           resolve();
@@ -86,8 +90,8 @@ async function waitForServer(port, serverName) {
  */
 async function buildElectronDeps() {
   return new Promise((resolve, reject) => {
-    const buildProcess = spawn('pnpm', ['electron:build:deps'], {
-      stdio: 'inherit',
+    const buildProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'electron:build:deps'], {
+      stdio: "inherit", shell: true,
       env: { ...process.env },
     });
 
@@ -118,8 +122,8 @@ async function startElectronDev() {
 
     // 2. Start Remix development server
     console.log('🌐 Starting Remix development server...');
-    remixProcess = spawn('pnpm', ['dev'], {
-      stdio: 'pipe',
+    remixProcess = spawn(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev'], {
+      stdio: "pipe", shell: true,
       env: { ...process.env },
     });
 
@@ -147,7 +151,7 @@ async function startElectronDev() {
     }
 
     electronProcess = spawn(electronPath, [mainPath], {
-      stdio: 'inherit',
+      stdio: "inherit", shell: true,
       env: {
         ...process.env,
         NODE_ENV: 'development',

@@ -1,0 +1,8 @@
+﻿id,167324
+apiKey,sk-5a596ec8ce3540fe82d7b0bbee153f15
+apiHost,ws-x7x5jjht1o23vkox.ap-southeast-1.maas.aliyuncs.com
+openAiCompatible,https://ws-x7x5jjht1o23vkox.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+dashScope,https://ws-x7x5jjht1o23vkox.ap-southeast-1.maas.aliyuncs.com/api/v1
+description,TEST
+workspaceName,Default Workspace
+workspaceId,ws-x7x5jjht1o23vkox

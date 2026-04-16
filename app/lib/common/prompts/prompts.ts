@@ -5,10 +5,11 @@ import { stripIndents } from '~/utils/stripIndent';
 
 export const getSystemPrompt = (
   cwd: string = WORK_DIR,
-  supabase?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: { anonKey?: string; supabaseUrl?: string };
+  database?: {
+    connected: boolean;
+    memoryCount?: number;
+    vectorDimensions?: number;
+    tileTemplate?: string;
   },
   designScheme?: DesignScheme,
 ) => `
@@ -75,30 +76,19 @@ You are Bolt, an expert AI assistant and exceptional senior software developer w
 <database_instructions>
   The following instructions guide how you should handle database operations in projects.
 
-  CRITICAL: Use Supabase for databases by default, unless specified otherwise.
-
-  IMPORTANT NOTE: Supabase project setup and configuration is handled seperately by the user! ${
-    supabase
-      ? !supabase.isConnected
-        ? 'You are not connected to Supabase. Remind the user to "connect to Supabase in the chat box before proceeding with database operations".'
-        : !supabase.hasSelectedProject
-          ? 'Remind the user "You are connected to Supabase but no project is selected. Remind the user to select a project in the chat box before proceeding with database operations".'
-          : ''
-      : ''
-  } 
-    IMPORTANT: Create a .env file if it doesnt exist${
-      supabase?.isConnected &&
-      supabase?.hasSelectedProject &&
-      supabase?.credentials?.supabaseUrl &&
-      supabase?.credentials?.anonKey
-        ? ` and include the following variables:
-    VITE_SUPABASE_URL=${supabase.credentials.supabaseUrl}
-    VITE_SUPABASE_ANON_KEY=${supabase.credentials.anonKey}`
-        : '.'
-    }
-  NEVER modify any Supabase configuration or \`.env\` files apart from creating the \`.env\`.
-
-  Do not try to generate types for supabase.
+  CRITICAL: Use the local PostgreSQL + pgvector stack by default.
+  ${
+    database?.connected
+      ? `The local database stack is available. Semantic memories currently stored: ${database.memoryCount ?? 0}. Vector dimensions: ${
+          database.vectorDimensions ?? 256
+        }.`
+      : 'If the local database stack is unavailable, remind the user to start or refresh the Docker services before database work.'
+  }
+  IMPORTANT: Create a .env file if it doesnt exist and include the following variables:
+    DATABASE_URL=postgres://bolt:bolt@postgres:5432/bolt
+    POSTGREST_URL=http://postgrest:3000
+    LOCAL_MAP_TILE_URL_TEMPLATE=${database?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}'}
+  NEVER rewrite existing database credentials unless the user explicitly asks for it.
 
   CRITICAL DATA PRESERVATION AND SAFETY REQUIREMENTS:
     - DATA INTEGRITY IS THE HIGHEST PRIORITY, users must NEVER lose their data
@@ -114,25 +104,25 @@ You are Bolt, an expert AI assistant and exceptional senior software developer w
       Writing SQL Migrations:
       CRITICAL: For EVERY database change, you MUST provide TWO actions:
         1. Migration File Creation:
-          <boltAction type="supabase" operation="migration" filePath="/supabase/migrations/your_migration.sql">
+          <boltAction type="database" operation="migration" filePath="/database/migrations/your_migration.sql">
             /* SQL migration content */
           </boltAction>
 
         2. Immediate Query Execution:
-          <boltAction type="supabase" operation="query" projectId="\${projectId}">
+          <boltAction type="database" operation="query">
             /* Same SQL content as migration */
           </boltAction>
 
         Example:
         <boltArtifact id="create-users-table" title="Create Users Table">
-          <boltAction type="supabase" operation="migration" filePath="/supabase/migrations/create_users.sql">
+          <boltAction type="database" operation="migration" filePath="/database/migrations/create_users.sql">
             CREATE TABLE users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text UNIQUE NOT NULL
             );
           </boltAction>
 
-          <boltAction type="supabase" operation="query" projectId="\${projectId}">
+          <boltAction type="database" operation="query">
             CREATE TABLE users (
               id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
               email text UNIQUE NOT NULL
@@ -142,9 +132,12 @@ You are Bolt, an expert AI assistant and exceptional senior software developer w
 
     - IMPORTANT: The SQL content must be identical in both actions to ensure consistency between the migration file and the executed query.
     - CRITICAL: NEVER use diffs for migration files, ALWAYS provide COMPLETE file content
-    - For each database change, create a new SQL migration file in \`/home/project/supabase/migrations\`
+    - For each database change, create a new SQL migration file in \`/home/project/database/migrations\`
     - NEVER update existing migration files, ALWAYS create a new migration file for any changes
     - Name migration files descriptively and DO NOT include a number prefix (e.g., \`create_users.sql\`, \`add_posts_table.sql\`).
+    - Enable \`vector\` for semantic memory tables with \`CREATE EXTENSION IF NOT EXISTS vector;\`
+    - Prefer \`vector(256)\` for embedding columns unless the user requests a different size
+    - Prefer the local tile route \`${database?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}'}\` for offline map widgets and previews
 
     - DO NOT worry about ordering as the files will be renamed correctly!
 
@@ -237,16 +230,14 @@ You are Bolt, an expert AI assistant and exceptional senior software developer w
       </example>
 
   Client Setup:
-    - Use \`@supabase/supabase-js\`
-    - Create a singleton client instance
-    - Use the environment variables from the project's \`.env\` file
-    - Use TypeScript generated types from the schema
+    - Prefer server-side routes that call the local PostgREST bridge
+    - Keep database credentials in server-side environment variables
+    - Expose only safe app-level settings to the client
+    - Use typed JSON responses for queries and semantic-memory endpoints
 
   Authentication:
-    - ALWAYS use email and password sign up
-    - FORBIDDEN: NEVER use magic links, social providers, or SSO for authentication unless explicitly stated!
-    - FORBIDDEN: NEVER create your own authentication system or authentication table, ALWAYS use Supabase's built-in authentication!
-    - Email confirmation is ALWAYS disabled unless explicitly stated!
+    - If authentication is required, implement it explicitly with PostgreSQL-backed tables or a provider chosen by the user
+    - Do not assume any managed auth product exists unless the user asks for one
 
   Row Level Security:
     - ALWAYS enable RLS for every new table

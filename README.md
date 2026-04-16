@@ -47,7 +47,7 @@ project, please check the [project management guide](./PROJECT.md) to get starte
 - **19+ AI Provider Integrations** - OpenAI, Anthropic, Google, Groq, xAI, DeepSeek, Mistral, Cohere, Together, Perplexity, HuggingFace, Ollama, LM Studio, OpenRouter, Moonshot, Hyperbolic, GitHub Models, Amazon Bedrock, OpenAI-like
 - **Electron Desktop App** - Native desktop experience with full functionality
 - **Advanced Deployment Options** - Netlify, Vercel, and GitHub Pages deployment
-- **Supabase Integration** - Database management and query capabilities
+- **Local PostgreSQL + pgvector Stack** - Persistent database management, semantic memory, and query capabilities
 - **Data Visualization & Analysis** - Charts, graphs, and data analysis tools
 - **MCP (Model Context Protocol)** - Enhanced AI tool integration
 - **Search Functionality** - Codebase search and navigation
@@ -85,7 +85,7 @@ project, please check the [project management guide](./PROJECT.md) to get starte
 - **Search functionality** to search through your codebase.
 - **File locking system** to prevent conflicts during AI code generation.
 - **Diff view** to see changes made by the AI.
-- **Supabase integration** for database management and queries.
+- **Local PostgreSQL + pgvector integration** for database management, semantic memory, and queries.
 - **Expo app creation** for React Native development.
 
 ## Setup
@@ -171,7 +171,7 @@ This option requires Docker and is great when you want an isolated environment o
    cp .env.example .env.local
    ```
 
-   The runtime scripts inside the container source `.env` and `.env.local`, so keep any API keys you need in one of those files.
+   The Docker stack accepts `.env` and `.env.local` when present, but it no longer requires either file to exist before the stack can boot.
 
 2. **Build an Image**
 
@@ -188,17 +188,25 @@ This option requires Docker and is great when you want an isolated environment o
 3. **Run the Container**
 
    ```bash
-   # Development workflow with hot reload
-   docker compose --profile development up
+   # Development workflow with hot reload and persistent dependency caches
+   docker compose --env-file .env.docker --profile development up -d --build
+
+   # Or use the helper script to prepare persistent caches and start the stack
+   ./scripts/docker-setup.sh development
+   # Windows PowerShell: .\scripts\docker-setup.ps1 -Profile development
 
    # Production-style container using composed services
-   docker compose --profile production up
+   docker compose --env-file .env.docker --profile production up -d --build
 
    # One-off production container (exposes the app on port 5173)
    docker run --rm -p 5173:5173 --env-file .env.local bolt-ai:latest
    ```
 
-   When the container starts it runs `pnpm run dockerstart`, which in turn executes `bindings.sh` to pass Cloudflare bindings through Wrangler. You can override this command in `docker-compose.yaml` if you need a different startup routine.
+   The development service keeps `node_modules` and the pnpm store in Docker named volumes, while Wrangler/Vite cache stays under `./.docker/`. PostgreSQL data is persisted under `./.docker/postgres/data`, and the local PostgREST bridge is started automatically for database queries and vector-memory endpoints. That makes rebuilds and restarts much faster without losing hot reload or database state.
+
+   If you want Bolt to share an Open WebUI OpenAI-compatible provider, set the same provider values in `.env.docker` using `OPENAI_API_BASE_URLS` and `OPENAI_API_KEYS`. Bolt now treats those as aliases for its OpenAI-compatible provider, so both apps can point at the same backend.
+
+   When the production container starts it runs `pnpm run dockerstart`, which in turn executes `bindings.sh` to pass Cloudflare bindings through Wrangler. The development container uses `scripts/docker-dev-start.sh` to reuse persistent dependencies and only reinstalls them when `pnpm-lock.yaml` changes. The compose stack now also provisions a derived `postgres:latest` image with `pgvector`, plus a local PostgREST service and offline map-tile endpoints.
 
 ### Option 3: Desktop Application (Electron)
 
@@ -486,6 +494,8 @@ Remember to always commit your local changes or stash them before pulling update
   - **`pnpm run dockerbuild:prod`**: Builds the Docker image for production.
   - **`pnpm run dockerrun`**: Runs the Docker container.
   - **`pnpm run dockerstart`**: Starts the Docker container with proper bindings.
+  - **`./scripts/docker-setup.sh development` / `.\scripts\docker-setup.ps1 -Profile development`**: Starts the persistent Docker dev stack with reusable caches.
+  - **`docker compose --env-file .env.docker --profile development up -d --build`**: Starts Bolt with the local PostgreSQL/pgvector and PostgREST services for continuous development.
 - **Electron Scripts**:
   - **`pnpm electron:build:deps`**: Builds Electron main and preload scripts.
   - **`pnpm electron:build:main`**: Builds the Electron main process.

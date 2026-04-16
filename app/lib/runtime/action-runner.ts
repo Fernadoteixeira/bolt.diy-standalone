@@ -1,11 +1,19 @@
 import type { WebContainer } from '@webcontainer/api';
-import { path as nodePath } from '~/utils/path';
 import { atom, map, type MapStore } from 'nanostores';
-import type { ActionAlert, BoltAction, DeployAlert, FileHistory, SupabaseAction, SupabaseAlert } from '~/types/actions';
-import { createScopedLogger } from '~/utils/logger';
-import { unreachable } from '~/utils/unreachable';
 import type { ActionCallbackData } from './message-parser';
+import type {
+  ActionAlert,
+  BoltAction,
+  DatabaseAlert,
+  DatabaseAction,
+  DeployAlert,
+  FileHistory,
+  SupabaseAction,
+} from '~/types/actions';
+import { createScopedLogger } from '~/utils/logger';
+import { path as nodePath } from '~/utils/path';
 import type { BoltShell } from '~/utils/shell';
+import { unreachable } from '~/utils/unreachable';
 
 const logger = createScopedLogger('ActionRunner');
 
@@ -70,7 +78,7 @@ export class ActionRunner {
   runnerId = atom<string>(`${Date.now()}`);
   actions: ActionsMap = map({});
   onAlert?: (alert: ActionAlert) => void;
-  onSupabaseAlert?: (alert: SupabaseAlert) => void;
+  onDatabaseAlert?: (alert: DatabaseAlert) => void;
   onDeployAlert?: (alert: DeployAlert) => void;
   buildOutput?: { path: string; exitCode: number; output: string };
 
@@ -78,13 +86,13 @@ export class ActionRunner {
     webcontainerPromise: Promise<WebContainer>,
     getShellTerminal: () => BoltShell,
     onAlert?: (alert: ActionAlert) => void,
-    onSupabaseAlert?: (alert: SupabaseAlert) => void,
+    onDatabaseAlert?: (alert: DatabaseAlert) => void,
     onDeployAlert?: (alert: DeployAlert) => void,
   ) {
     this.#webcontainer = webcontainerPromise;
     this.#shellTerminal = getShellTerminal;
     this.onAlert = onAlert;
-    this.onSupabaseAlert = onSupabaseAlert;
+    this.onDatabaseAlert = onDatabaseAlert;
     this.onDeployAlert = onDeployAlert;
   }
 
@@ -163,17 +171,16 @@ export class ActionRunner {
           await this.#runFileAction(action);
           break;
         }
-        case 'supabase': {
+        case 'supabase':
+        case 'database': {
           try {
-            await this.handleSupabaseAction(action as SupabaseAction);
+            await this.handleDatabaseAction(action as SupabaseAction | DatabaseAction);
           } catch (error: any) {
-            // Update action status
             this.#updateAction(actionId, {
               status: 'failed',
-              error: error instanceof Error ? error.message : 'Supabase action failed',
+              error: error instanceof Error ? error.message : 'Database action failed',
             });
 
-            // Return early without re-throwing
             return;
           }
           break;
@@ -395,6 +402,7 @@ export class ActionRunner {
     const buildProcess = await webcontainer.spawn('npm', ['run', 'build']);
 
     let output = '';
+
     const outputPromise = buildProcess.output.pipeTo(
       new WritableStream({
         write(data) {
@@ -476,9 +484,9 @@ export class ActionRunner {
 
     return buildResult;
   }
-  async handleSupabaseAction(action: SupabaseAction) {
+  async handleDatabaseAction(action: SupabaseAction | DatabaseAction) {
     const { operation, content, filePath } = action;
-    logger.debug('[Supabase Action]:', { operation, filePath, content });
+    logger.debug('[Database Action]:', { operation, filePath, content });
 
     switch (operation) {
       case 'migration':
@@ -486,35 +494,31 @@ export class ActionRunner {
           throw new Error('Migration requires a filePath');
         }
 
-        // Show alert for migration action
-        this.onSupabaseAlert?.({
+        this.onDatabaseAlert?.({
           type: 'info',
-          title: 'Supabase Migration',
+          title: 'PostgreSQL Migration',
           description: `Create migration file: ${filePath}`,
           content,
-          source: 'supabase',
+          source: 'database',
         });
 
-        // Only create the migration file
         await this.#runFileAction({
           type: 'file',
           filePath,
           content,
-          changeSource: 'supabase',
+          changeSource: 'auto-save',
         } as any);
         return { success: true };
 
       case 'query': {
-        // Always show the alert and let the SupabaseAlert component handle connection state
-        this.onSupabaseAlert?.({
+        this.onDatabaseAlert?.({
           type: 'info',
-          title: 'Supabase Query',
+          title: 'PostgreSQL Query',
           description: 'Execute database query',
           content,
-          source: 'supabase',
+          source: 'database',
         });
 
-        // The actual execution will be triggered from SupabaseChatAlert
         return { pending: true };
       }
 

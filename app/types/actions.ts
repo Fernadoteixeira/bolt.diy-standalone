@@ -1,6 +1,6 @@
 import type { Change } from 'diff';
 
-export type ActionType = 'file' | 'shell' | 'supabase';
+export type ActionType = 'file' | 'shell' | 'start' | 'build' | 'supabase' | 'database';
 
 export interface BaseAction {
   content: string;
@@ -30,7 +30,14 @@ export interface SupabaseAction extends BaseAction {
   projectId?: string;
 }
 
-export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | SupabaseAction;
+export interface DatabaseAction extends BaseAction {
+  type: 'database';
+  operation: 'migration' | 'query';
+  filePath?: string;
+  projectId?: string;
+}
+
+export type BoltAction = FileAction | ShellAction | StartAction | BuildAction | SupabaseAction | DatabaseAction;
 
 export type BoltActionData = BoltAction | BaseAction;
 
@@ -42,13 +49,15 @@ export interface ActionAlert {
   source?: 'terminal' | 'preview'; // Add source to differentiate between terminal and preview errors
 }
 
-export interface SupabaseAlert {
+export interface DatabaseAlert {
   type: string;
   title: string;
   description: string;
   content: string;
-  source?: 'supabase';
+  source?: 'database' | 'supabase';
 }
+
+export type SupabaseAlert = DatabaseAlert;
 
 export interface DeployAlert {
   type: 'success' | 'error' | 'info';

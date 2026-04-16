@@ -1,25 +1,25 @@
 import React from 'react';
+import { toast } from 'react-toastify';
 import { ClientOnly } from 'remix-utils/client-only';
-import { classNames } from '~/utils/classNames';
-import { PROVIDER_LIST } from '~/utils/constants';
-import { ModelSelector } from '~/components/chat/ModelSelector';
 import { APIKeyManager } from './APIKeyManager';
-import { LOCAL_PROVIDERS } from '~/lib/stores/settings';
+import styles from './BaseChat.module.scss';
+import { DatabaseConnection } from './DatabaseConnection';
 import FilePreview from './FilePreview';
+import { McpTools } from './MCPTools';
 import { ScreenshotStateManager } from './ScreenshotStateManager';
 import { SendButton } from './SendButton.client';
-import { IconButton } from '~/components/ui/IconButton';
-import { toast } from 'react-toastify';
-import { SpeechRecognitionButton } from '~/components/chat/SpeechRecognition';
-import { SupabaseConnection } from './SupabaseConnection';
-import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
-import styles from './BaseChat.module.scss';
-import type { ProviderInfo } from '~/types/model';
-import { ColorSchemeDialog } from '~/components/ui/ColorSchemeDialog';
-import type { DesignScheme } from '~/types/design-scheme';
-import type { ElementInfo } from '~/components/workbench/Inspector';
-import { McpTools } from './MCPTools';
 import { WebSearch } from './WebSearch.client';
+import { ModelSelector } from '~/components/chat/ModelSelector';
+import { SpeechRecognitionButton } from '~/components/chat/SpeechRecognition';
+import { ColorSchemeDialog } from '~/components/ui/ColorSchemeDialog';
+import { IconButton } from '~/components/ui/IconButton';
+import { ExpoQrModal } from '~/components/workbench/ExpoQrModal';
+import type { ElementInfo } from '~/components/workbench/Inspector';
+import { LOCAL_PROVIDERS } from '~/lib/stores/settings';
+import type { DesignScheme } from '~/types/design-scheme';
+import type { ProviderInfo } from '~/types/model';
+import { classNames } from '~/utils/classNames';
+import { PROVIDER_LIST } from '~/utils/constants';
 
 interface ChatBoxProps {
   isModelSettingsCollapsed: boolean;
@@ -328,7 +328,7 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
               <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
             </div>
           ) : null}
-          <SupabaseConnection />
+          <DatabaseConnection />
           <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
         </div>
       </div>

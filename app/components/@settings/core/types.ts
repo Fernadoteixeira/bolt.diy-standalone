@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
 import { User, Folder, Wifi, Settings, Box, Sliders } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 export type SettingCategory = 'profile' | 'file_sharing' | 'connectivity' | 'system' | 'services' | 'preferences';
 
@@ -78,7 +78,7 @@ export const TAB_LABELS: Record<TabType, string> = {
   gitlab: 'GitLab',
   netlify: 'Netlify',
   vercel: 'Vercel',
-  supabase: 'Supabase',
+  supabase: 'PostgreSQL',
   'event-logs': 'Event Logs',
   mcp: 'MCP Servers',
 };

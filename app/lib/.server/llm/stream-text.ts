@@ -1,26 +1,25 @@
 import { convertToCoreMessages, streamText as _streamText, type Message } from 'ai';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel, type FileMap } from './constants';
-import { getSystemPrompt } from '~/lib/common/prompts/prompts';
-import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, WORK_DIR } from '~/utils/constants';
-import type { IProviderSetting } from '~/types/model';
-import { PromptLibrary } from '~/lib/common/prompt-library';
-import { allowedHTMLElements } from '~/utils/markdown';
-import { LLMManager } from '~/lib/modules/llm/manager';
-import { createScopedLogger } from '~/utils/logger';
 import { createFilesContext, extractPropertiesFromMessage } from './utils';
+import { PromptLibrary } from '~/lib/common/prompt-library';
 import { discussPrompt } from '~/lib/common/prompts/discuss-prompt';
+import { getSystemPrompt } from '~/lib/common/prompts/prompts';
+import { LLMManager } from '~/lib/modules/llm/manager';
 import type { DesignScheme } from '~/types/design-scheme';
+import type { IProviderSetting } from '~/types/model';
+import { DEFAULT_MODEL, DEFAULT_PROVIDER, MODIFICATIONS_TAG_NAME, PROVIDER_LIST, WORK_DIR } from '~/utils/constants';
+import { createScopedLogger } from '~/utils/logger';
+import { allowedHTMLElements } from '~/utils/markdown';
 
 export type Messages = Message[];
 
 export interface StreamingOptions extends Omit<Parameters<typeof _streamText>[0], 'model'> {
-  supabaseConnection?: {
-    isConnected: boolean;
-    hasSelectedProject: boolean;
-    credentials?: {
-      anonKey?: string;
-      supabaseUrl?: string;
-    };
+  databaseConnection?: {
+    connected: boolean;
+    memoryCount?: number;
+    vectorDimensions?: number;
+    tileTemplate?: string;
+    memoryContext?: string;
   };
 }
 
@@ -80,8 +79,10 @@ export async function streamText(props: {
     chatMode,
     designScheme,
   } = props;
+
   let currentModel = DEFAULT_MODEL;
   let currentProvider = DEFAULT_PROVIDER.name;
+
   let processedMessages = messages.map((message) => {
     const newMessage = { ...message };
 
@@ -106,6 +107,7 @@ export async function streamText(props: {
 
   const provider = PROVIDER_LIST.find((p) => p.name === currentProvider) || DEFAULT_PROVIDER;
   const staticModels = LLMManager.getInstance().getStaticModelListFromProvider(provider);
+
   let modelDetails = staticModels.find((m) => m.name === currentModel);
 
   if (!modelDetails) {
@@ -155,10 +157,11 @@ export async function streamText(props: {
       allowedHtmlElements: allowedHTMLElements,
       modificationTagName: MODIFICATIONS_TAG_NAME,
       designScheme,
-      supabase: {
-        isConnected: options?.supabaseConnection?.isConnected || false,
-        hasSelectedProject: options?.supabaseConnection?.hasSelectedProject || false,
-        credentials: options?.supabaseConnection?.credentials || undefined,
+      database: {
+        connected: options?.databaseConnection?.connected || false,
+        memoryCount: options?.databaseConnection?.memoryCount || 0,
+        vectorDimensions: options?.databaseConnection?.vectorDimensions || 256,
+        tileTemplate: options?.databaseConnection?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}',
       },
     }) ?? getSystemPrompt();
 
@@ -217,6 +220,17 @@ export async function streamText(props: {
     `;
   } else {
     console.log('No locked files found from any source for prompt.');
+  }
+
+  if (options?.databaseConnection?.memoryContext) {
+    systemPrompt = `${systemPrompt}
+
+    SEMANTIC MEMORY CONTEXT:
+    ---
+    ${options.databaseConnection.memoryContext}
+    ---
+    Use this retrieved memory context to stay consistent with prior work, but do not treat it as a source of truth over the live files.
+    `;
   }
 
   logger.info(`Sending llm call to ${provider.name} with model ${modelDetails.name}`);

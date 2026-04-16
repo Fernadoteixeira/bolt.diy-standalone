@@ -1,8 +1,8 @@
-import React from 'react';
 import { motion } from 'framer-motion';
+import React from 'react';
 import { Button } from '~/components/ui/Button';
-import { classNames } from '~/utils/classNames';
 import { useGitHubConnection } from '~/lib/hooks';
+import { classNames } from '~/utils/classNames';
 
 interface ConnectionTestResult {
   status: 'success' | 'error' | 'testing';
@@ -69,14 +69,18 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
               <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">
                 GITHUB_API_KEY
               </code>{' '}
-              in <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">.env.local</code> for server-side GitHub Models and GitHub integration.
+              in{' '}
+              <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">
+                .env.local
+              </code>{' '}
+              for server-side GitHub Models and GitHub integration.
             </p>
             <p>
               If you explicitly need a browser-exposed token for client-side GitHub features, you can still set{' '}
               <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">
                 VITE_GITHUB_ACCESS_TOKEN
-              </code>
-              {' '}and{' '}
+              </code>{' '}
+              and{' '}
               <code className="px-1 py-0.5 bg-bolt-elements-background-depth-2 dark:bg-bolt-elements-background-depth-2 rounded">
                 VITE_GITHUB_TOKEN_TYPE=fine-grained
               </code>
@@ -118,8 +122,9 @@ export function GitHubConnection({ connectionTest, onTestConnection }: GitHubCon
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 disabled={isConnecting || isConnected}
-                placeholder={`Enter your GitHub ${tokenType === 'classic' ? 'personal access token' : 'fine-grained token'
-                  }`}
+                placeholder={`Enter your GitHub ${
+                  tokenType === 'classic' ? 'personal access token' : 'fine-grained token'
+                }`}
                 className={classNames(
                   'w-full px-3 py-2 rounded-lg text-sm',
                   'bg-[#F8F8F8] dark:bg-[#1A1A1A]',

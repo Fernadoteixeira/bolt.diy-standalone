@@ -1,19 +1,20 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { createDataStream, generateId } from 'ai';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS, type FileMap } from '~/lib/.server/llm/constants';
-import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
+import { createSummary } from '~/lib/.server/llm/create-summary';
+import { getFilePaths, selectContext } from '~/lib/.server/llm/select-context';
+import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
-import type { IProviderSetting } from '~/types/model';
-import { createScopedLogger } from '~/utils/logger';
-import { getFilePaths, selectContext } from '~/lib/.server/llm/select-context';
-import type { ContextAnnotation, ProgressAnnotation } from '~/types/context';
-import { WORK_DIR } from '~/utils/constants';
-import { createSummary } from '~/lib/.server/llm/create-summary';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
-import type { DesignScheme } from '~/types/design-scheme';
+import { formatMemoryContext, rememberConversation, searchRelevantMemories } from '~/lib/.server/memory/service';
+import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { MCPService } from '~/lib/services/mcpService';
-import { StreamRecoveryManager } from '~/lib/.server/llm/stream-recovery';
+import type { ContextAnnotation, ProgressAnnotation } from '~/types/context';
+import type { DesignScheme } from '~/types/design-scheme';
+import type { IProviderSetting } from '~/types/model';
+import { WORK_DIR } from '~/utils/constants';
+import { createScopedLogger } from '~/utils/logger';
 
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
@@ -48,7 +49,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     },
   });
 
-  const { messages, files, promptId, contextOptimization, supabase, chatMode, designScheme, maxLLMSteps } =
+  const { messages, files, promptId, contextOptimization, database, chatId, chatMode, designScheme, maxLLMSteps } =
     await request.json<{
       messages: Messages;
       files: any;
@@ -56,19 +57,19 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       contextOptimization: boolean;
       chatMode: 'discuss' | 'build';
       designScheme?: DesignScheme;
-      supabase?: {
-        isConnected: boolean;
-        hasSelectedProject: boolean;
-        credentials?: {
-          anonKey?: string;
-          supabaseUrl?: string;
-        };
+      chatId?: string;
+      database?: {
+        connected: boolean;
+        memoryCount?: number;
+        vectorDimensions?: number;
+        tileTemplate?: string;
       };
       maxLLMSteps: number;
     }>();
 
   const cookieHeader = request.headers.get('Cookie');
   const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
+
   const providerSettings: Record<string, IProviderSetting> = JSON.parse(
     parseCookies(cookieHeader || '').providers || '{}',
   );
@@ -80,7 +81,9 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     promptTokens: 0,
     totalTokens: 0,
   };
+
   const encoder: TextEncoder = new TextEncoder();
+
   let progressCounter: number = 1;
 
   try {
@@ -89,12 +92,14 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     logger.debug(`Total message length: ${totalMessageContent.split(' ').length}, words`);
 
     let lastChunk: string | undefined = undefined;
+    let accumulatedAssistantContent = '';
 
     const dataStream = createDataStream({
       async execute(dataStream) {
         streamRecovery.startMonitoring();
 
         const filePaths = getFilePaths(files || {});
+
         let filteredFiles: FileMap | undefined = undefined;
         let summary: string | undefined = undefined;
         let messageSliceId = 0;
@@ -207,8 +212,32 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           // logger.debug('Code Files Selected');
         }
 
+        const currentUserMessage = processedMessages.filter((message) => message.role === 'user').slice(-1)[0];
+
+        const currentUserMessageProps = currentUserMessage
+          ? extractPropertiesFromMessage(currentUserMessage)
+          : undefined;
+
+        const memoryQuery = summary || currentUserMessageProps?.content || '';
+
+        const memoryMatches =
+          database?.connected && memoryQuery
+            ? await searchRelevantMemories(memoryQuery, {
+                limit: 6,
+                env: context.cloudflare?.env,
+              })
+            : [];
+
+        const memoryContext = formatMemoryContext(memoryMatches);
+
         const options: StreamingOptions = {
-          supabaseConnection: supabase,
+          databaseConnection: {
+            connected: database?.connected || false,
+            memoryCount: database?.memoryCount || memoryMatches.length,
+            vectorDimensions: database?.vectorDimensions || 256,
+            tileTemplate: database?.tileTemplate || '/api/map/tiles/{z}/{x}/{y}',
+            memoryContext,
+          },
           toolChoice: 'auto',
           tools: mcpService.toolsWithoutExecute,
           maxSteps: maxLLMSteps,
@@ -220,6 +249,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
           },
           onFinish: async ({ text: content, finishReason, usage }) => {
             logger.debug('usage', JSON.stringify(usage));
+            accumulatedAssistantContent += content;
 
             if (usage) {
               cumulativeUsage.completionTokens += usage.completionTokens || 0;
@@ -228,6 +258,19 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
             }
 
             if (finishReason !== 'length') {
+              if (database?.connected && currentUserMessageProps?.content && accumulatedAssistantContent) {
+                const { model, provider, content: userContent } = currentUserMessageProps;
+                await rememberConversation({
+                  chatId,
+                  userMessage: userContent,
+                  assistantMessage: accumulatedAssistantContent,
+                  summary,
+                  provider,
+                  model,
+                  env: context.cloudflare?.env,
+                });
+              }
+
               dataStream.writeMessageAnnotation({
                 type: 'usage',
                 value: {
