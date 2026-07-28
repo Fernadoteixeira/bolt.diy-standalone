@@ -35,6 +35,7 @@ npm install
 The script tests the following API categories:
 
 ### Database & Storage
+
 - PostgreSQL Database (URL format validation)
 - AWS Services (credentials and region)
 - API Gateway endpoint accessibility
@@ -44,9 +45,15 @@ The script tests the following API categories:
 - Supabase connection
 
 ### Payment Services
+
 - ASAAS Payment API
 
 ### AI & Machine Learning
+
+- ASAAS Payment API
+
+### AI & Machine Learning
+
 - Gemini API (Google)
 - NREL Solar API
 - OpenAI API
@@ -60,16 +67,19 @@ The script tests the following API categories:
 - Ollama (local LLM)
 
 ### Email & Communication
+
 - Resend Email API
 - Sentry error tracking
 - PostHog analytics
 
 ### Geospatial & Mapping
+
 - CesiumJS token
 - MapTiler API
 - Sentinel Hub
 
 ### Development Tools
+
 - Firecrawl API
 - Roboflow API
 - GitHub tokens (fine-grained and classic)
@@ -78,11 +88,13 @@ The script tests the following API categories:
 - E2B API
 
 ### Weather Services
+
 - OpenWeatherMap API
 
 ## Output Format
 
 The script provides color-coded output:
+
 - **Green** (✓ PASS): API is accessible and/or credentials are valid
 - **Red** (✗ FAIL): API is inaccessible or credentials are invalid
 - **Yellow**: In-progress tests
@@ -91,6 +103,7 @@ The script provides color-coded output:
 ## Summary Report
 
 After all tests complete, a summary is displayed showing:
+
 - Total number of tests
 - Number of passed tests
 - Number of failed tests
