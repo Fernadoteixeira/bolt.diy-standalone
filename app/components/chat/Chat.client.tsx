@@ -5,7 +5,7 @@ import { useSearchParams } from '@remix-run/react';
 import type { Message } from 'ai';
 import { useAnimate } from 'framer-motion';
 import Cookies from 'js-cookie';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { BaseChat } from './BaseChat';
 import type { ElementInfo } from '~/components/workbench/Inspector';
@@ -217,7 +217,7 @@ export const ChatImpl = memo(
       }
     };
 
-    const abort = () => {
+    const abort = useCallback(() => {
       stop();
       chatStore.setKey('aborted', true);
       workbenchStore.abortAllActions();
@@ -228,7 +228,7 @@ export const ChatImpl = memo(
         model,
         provider: provider.name,
       });
-    };
+    }, [stop, model, provider.name]);
 
     const handleError = useCallback(
       (error: any, context: 'chat' | 'template' | 'llmcall' = 'chat') => {
@@ -559,9 +559,12 @@ export const ChatImpl = memo(
      * Handles the change event for the textarea and updates the input state.
      * @param event - The change event from the textarea.
      */
-    const onTextareaChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      handleInputChange(event);
-    };
+    const onTextareaChange = useCallback(
+      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        handleInputChange(event);
+      },
+      [handleInputChange],
+    );
 
     /**
      * Debounced function to cache the prompt in cookies.
@@ -583,15 +586,15 @@ export const ChatImpl = memo(
       }
     }, []);
 
-    const handleModelChange = (newModel: string) => {
+    const handleModelChange = useCallback((newModel: string) => {
       setModel(newModel);
       Cookies.set('selectedModel', newModel, { expires: 30 });
-    };
+    }, []);
 
-    const handleProviderChange = (newProvider: ProviderInfo) => {
+    const handleProviderChange = useCallback((newProvider: ProviderInfo) => {
       setProvider(newProvider);
       Cookies.set('selectedProvider', newProvider.name, { expires: 30 });
-    };
+    }, []);
 
     const handleWebSearchResult = useCallback(
       (result: string) => {
@@ -607,34 +610,29 @@ export const ChatImpl = memo(
       [input, handleInputChange],
     );
 
-    return (
-      <BaseChat
-        ref={animationScope}
-        textareaRef={textareaRef}
-        input={input}
-        showChat={showChat}
-        chatStarted={chatStarted}
-        isStreaming={isLoading || fakeLoading}
-        onStreamingChange={(streaming) => {
-          streamingState.set(streaming);
-        }}
-        enhancingPrompt={enhancingPrompt}
-        promptEnhanced={promptEnhanced}
-        sendMessage={sendMessage}
-        model={model}
-        setModel={handleModelChange}
-        provider={provider}
-        setProvider={handleProviderChange}
-        providerList={activeProviders}
-        handleInputChange={(e) => {
-          onTextareaChange(e);
-          debouncedCachePrompt(e);
-        }}
-        handleStop={abort}
-        description={description}
-        importChat={importChat}
-        exportChat={exportChat}
-        messages={messages.map((message, i) => {
+    // Stable streaming change handler — streamingState is a module-level atom
+    const handleStreamingChange = useCallback((streaming: boolean) => {
+      streamingState.set(streaming);
+    }, []);
+
+    // Stable combined input handler — both dependencies are stable
+    const handleCombinedInputChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onTextareaChange(e);
+        debouncedCachePrompt(e);
+      },
+      [onTextareaChange, debouncedCachePrompt],
+    );
+
+    // Stable workbench alert clearers — workbenchStore is module-level
+    const handleClearAlert = useCallback(() => workbenchStore.clearAlert(), []);
+    const handleClearDatabaseAlert = useCallback(() => workbenchStore.clearDatabaseAlert(), []);
+    const handleClearDeployAlert = useCallback(() => workbenchStore.clearDeployAlert(), []);
+
+    // Memoized message array — only recomputed when messages content or parsed overlay changes
+    const mappedMessages = useMemo(
+      () =>
+        messages.map((message, i) => {
           if (message.role === 'user') {
             return message;
           }
@@ -643,7 +641,33 @@ export const ChatImpl = memo(
             ...message,
             content: parsedMessages[i] || '',
           };
-        })}
+        }),
+      [messages, parsedMessages],
+    );
+
+    return (
+      <BaseChat
+        ref={animationScope}
+        textareaRef={textareaRef}
+        input={input}
+        showChat={showChat}
+        chatStarted={chatStarted}
+        isStreaming={isLoading || fakeLoading}
+        onStreamingChange={handleStreamingChange}
+        enhancingPrompt={enhancingPrompt}
+        promptEnhanced={promptEnhanced}
+        sendMessage={sendMessage}
+        model={model}
+        setModel={handleModelChange}
+        provider={provider}
+        setProvider={handleProviderChange}
+        providerList={activeProviders}
+        handleInputChange={handleCombinedInputChange}
+        handleStop={abort}
+        description={description}
+        importChat={importChat}
+        exportChat={exportChat}
+        messages={mappedMessages}
         enhancePrompt={() => {
           enhancePrompt(
             input,
@@ -661,11 +685,11 @@ export const ChatImpl = memo(
         imageDataList={imageDataList}
         setImageDataList={setImageDataList}
         actionAlert={actionAlert}
-        clearAlert={() => workbenchStore.clearAlert()}
+        clearAlert={handleClearAlert}
         databaseAlert={databaseAlert}
-        clearDatabaseAlert={() => workbenchStore.clearDatabaseAlert()}
+        clearDatabaseAlert={handleClearDatabaseAlert}
         deployAlert={deployAlert}
-        clearDeployAlert={() => workbenchStore.clearDeployAlert()}
+        clearDeployAlert={handleClearDeployAlert}
         llmErrorAlert={llmErrorAlert}
         clearLlmErrorAlert={clearApiErrorAlert}
         data={chatData}

@@ -15,12 +15,14 @@ export const SendButton = ({ show, isStreaming, disabled, onClick }: SendButtonP
     <AnimatePresence>
       {show ? (
         <motion.button
-          className="absolute flex justify-center items-center top-[18px] right-[22px] p-1 bg-accent-500 hover:brightness-94 color-white rounded-md w-[34px] h-[34px] transition-theme disabled:opacity-50 disabled:cursor-not-allowed"
+          className="absolute flex justify-center items-center top-[18px] right-[22px] p-1 bg-accent-500 hover:brightness-94 color-white rounded-md w-[34px] h-[34px] transition-theme disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-accent-500 focus-visible:outline-none"
           transition={{ ease: customEasingFn, duration: 0.17 }}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 10 }}
           disabled={disabled}
+          aria-label={isStreaming ? 'Stop generating (Escape)' : 'Send message (Enter)'}
+          title={isStreaming ? 'Stop generating (Escape)' : 'Send message (Enter)'}
           onClick={(event) => {
             event.preventDefault();
 
@@ -29,7 +31,7 @@ export const SendButton = ({ show, isStreaming, disabled, onClick }: SendButtonP
             }
           }}
         >
-          <div className="text-lg">
+          <div className="text-lg" aria-hidden="true">
             {!isStreaming ? <div className="i-ph:arrow-right"></div> : <div className="i-ph:stop-circle-bold"></div>}
           </div>
         </motion.button>

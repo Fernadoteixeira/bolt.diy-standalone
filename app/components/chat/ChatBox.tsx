@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { toast } from 'react-toastify';
 import { ClientOnly } from 'remix-utils/client-only';
 import { APIKeyManager } from './APIKeyManager';
@@ -65,7 +65,7 @@ interface ChatBoxProps {
   setSelectedElement?: ((element: ElementInfo | null) => void) | undefined;
 }
 
-export const ChatBox: React.FC<ChatBoxProps> = (props) => {
+export const ChatBox: React.FC<ChatBoxProps> = memo((props) => {
   return (
     <div
       className={classNames(
@@ -161,7 +161,8 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             selected for inspection
           </div>
           <button
-            className="bg-transparent text-accent-500 pointer-auto"
+            className="bg-transparent text-accent-500 pointer-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/70 rounded"
+            aria-label="Clear selected element"
             onClick={() => props.setSelectedElement?.(null)}
           >
             Clear
@@ -173,11 +174,15 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
       >
         <textarea
           ref={props.textareaRef}
+          id="chat-input-textarea"
           className={classNames(
             'w-full pl-4 pt-4 pr-16 outline-none resize-none text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent text-sm',
             'transition-all duration-200',
             'hover:border-bolt-elements-focus',
           )}
+          aria-label={props.chatMode === 'build' ? 'Message to Bolt' : 'Message for discussion'}
+          aria-describedby="chat-input-hint"
+          aria-busy={props.isStreaming}
           onDragEnter={(e) => {
             e.preventDefault();
             e.currentTarget.style.border = '2px solid #1488fc';
@@ -260,7 +265,11 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             />
           )}
         </ClientOnly>
-        <div className="flex justify-between items-center text-sm p-4 pt-2">
+        <div
+          className="flex justify-between items-center text-sm p-2 sm:p-4 pt-2"
+          role="toolbar"
+          aria-label="Chat input actions"
+        >
           <div className="flex gap-1 items-center">
             <ColorSchemeDialog designScheme={props.designScheme} setDesignScheme={props.setDesignScheme} />
             <McpTools />
@@ -323,15 +332,36 @@ export const ChatBox: React.FC<ChatBoxProps> = (props) => {
             </IconButton>
           </div>
           {props.input.length > 3 ? (
-            <div className="text-xs text-bolt-elements-textTertiary">
-              Use <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Shift</kbd> +{' '}
-              <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
+            <div
+              id="chat-input-hint"
+              className="hidden sm:flex text-xs text-bolt-elements-textTertiary items-center gap-2"
+            >
+              <span>
+                Use <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Shift</kbd> +{' '}
+                <kbd className="kdb px-1.5 py-0.5 rounded bg-bolt-elements-background-depth-2">Return</kbd> a new line
+              </span>
+              {props.input.length > 200 && (
+                <span
+                  className={classNames('ml-1 tabular-nums', {
+                    'text-amber-500': props.input.length > 800,
+                    'text-bolt-elements-textTertiary': props.input.length <= 800,
+                  })}
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
+                  {props.input.length} chars
+                </span>
+              )}
             </div>
-          ) : null}
+          ) : (
+            <span id="chat-input-hint" className="sr-only">
+              Press Enter to send, Shift+Enter for a new line
+            </span>
+          )}
           <DatabaseConnection />
           <ExpoQrModal open={props.qrModalOpen} onClose={() => props.setQrModalOpen(false)} />
         </div>
       </div>
     </div>
   );
-};
+});

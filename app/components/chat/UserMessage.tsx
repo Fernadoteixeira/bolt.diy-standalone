@@ -1,7 +1,3 @@
-/*
- * @ts-nocheck
- * Preventing TS checks with files presented in the video for a better presentation.
- */
 import type {
   TextUIPart,
   ReasoningUIPart,
@@ -11,6 +7,7 @@ import type {
   StepStartUIPart,
 } from '@ai-sdk/ui-utils';
 import { useStore } from '@nanostores/react';
+import { memo, useMemo } from 'react';
 import { Markdown } from './Markdown';
 import { profileStore } from '~/lib/stores/profile';
 import { MODEL_REGEX, PROVIDER_REGEX } from '~/utils/constants';
@@ -22,14 +19,21 @@ interface UserMessageProps {
     | undefined;
 }
 
-export function UserMessage({ content, parts }: UserMessageProps) {
+// Stable style objects extracted to module level to avoid new object creation on every render
+const imageStyleContain = { maxHeight: '512px', objectFit: 'contain' } as const;
+const imageStyleFill = { objectFit: 'fill' } as const;
+
+export const UserMessage = memo(({ content, parts }: UserMessageProps) => {
   const profile = useStore(profileStore);
 
   // Extract images from parts - look for file parts with image mime types
-  const images =
-    parts?.filter(
-      (part): part is FileUIPart => part.type === 'file' && 'mimeType' in part && part.mimeType.startsWith('image/'),
-    ) || [];
+  const images = useMemo(
+    () =>
+      parts?.filter(
+        (part): part is FileUIPart => part.type === 'file' && 'mimeType' in part && part.mimeType.startsWith('image/'),
+      ) ?? [],
+    [parts],
+  );
 
   if (Array.isArray(content)) {
     const textItem = content.find((item) => item.type === 'text');
@@ -63,7 +67,7 @@ export function UserMessage({ content, parts }: UserMessageProps) {
               src={`data:${item.mimeType};base64,${item.data}`}
               alt={`Image ${index + 1}`}
               className="max-w-full h-auto rounded-lg"
-              style={{ maxHeight: '512px', objectFit: 'contain' }}
+              style={imageStyleContain}
             />
           ))}
         </div>
@@ -84,7 +88,7 @@ export function UserMessage({ content, parts }: UserMessageProps) {
                 src={`data:${item.mimeType};base64,${item.data}`}
                 alt={`Image ${index + 1}`}
                 className="h-full w-full rounded-lg"
-                style={{ objectFit: 'fill' }}
+                style={imageStyleFill}
               />
             </div>
           </div>
@@ -93,7 +97,7 @@ export function UserMessage({ content, parts }: UserMessageProps) {
       <Markdown html>{textContent}</Markdown>
     </div>
   );
-}
+});
 
 function stripMetadata(content: string) {
   const artifactRegex = /<boltArtifact\s+[^>]*>[\s\S]*?<\/boltArtifact>/gm;

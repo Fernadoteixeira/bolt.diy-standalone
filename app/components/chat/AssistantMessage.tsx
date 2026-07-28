@@ -8,7 +8,7 @@ import type {
 } from '@ai-sdk/ui-utils';
 import type { JSONValue } from 'ai';
 import type { Message } from 'ai';
-import { memo, Fragment } from 'react';
+import { memo, Fragment, useMemo } from 'react';
 import { Markdown } from './Markdown';
 import { ToolInvocations } from './ToolInvocations';
 import Popover from '~/components/ui/Popover';
@@ -74,10 +74,14 @@ export const AssistantMessage = memo(
     parts,
     addToolResult,
   }: AssistantMessageProps) => {
-    const filteredAnnotations = (annotations?.filter(
-      (annotation: JSONValue) =>
-        annotation && typeof annotation === 'object' && Object.keys(annotation).includes('type'),
-    ) || []) as { type: string; value: any } & { [key: string]: any }[];
+    const filteredAnnotations = useMemo(
+      () =>
+        (annotations?.filter(
+          (annotation: JSONValue) =>
+            annotation && typeof annotation === 'object' && Object.keys(annotation).includes('type'),
+        ) || []) as { type: string; value: any } & { [key: string]: any }[],
+      [annotations],
+    );
 
     let chatSummary: string | undefined = undefined;
 
@@ -159,7 +163,8 @@ export const AssistantMessage = memo(
                       <button
                         onClick={() => onRewind(messageId)}
                         key="i-ph:arrow-u-up-left"
-                        className="i-ph:arrow-u-up-left text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
+                        aria-label="Revert to this message"
+                        className="i-ph:arrow-u-up-left text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/70 rounded"
                       />
                     </WithTooltip>
                   )}
@@ -168,7 +173,8 @@ export const AssistantMessage = memo(
                       <button
                         onClick={() => onFork(messageId)}
                         key="i-ph:git-fork"
-                        className="i-ph:git-fork text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors"
+                        aria-label="Fork chat from this message"
+                        className="i-ph:git-fork text-xl text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-500/70 rounded"
                       />
                     </WithTooltip>
                   )}

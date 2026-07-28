@@ -1,7 +1,6 @@
 import { useLocation } from '@remix-run/react';
 import type { Message } from 'ai';
-import { Fragment } from 'react';
-import { forwardRef } from 'react';
+import { Fragment, forwardRef, useCallback } from 'react';
 import type { ForwardedRef } from 'react';
 import { toast } from 'react-toastify';
 import { AssistantMessage } from './AssistantMessage';
@@ -29,13 +28,16 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
     const { id, isStreaming = false, messages = [] } = props;
     const location = useLocation();
 
-    const handleRewind = (messageId: string) => {
-      const searchParams = new URLSearchParams(location.search);
-      searchParams.set('rewindTo', messageId);
-      window.location.search = searchParams.toString();
-    };
+    const handleRewind = useCallback(
+      (messageId: string) => {
+        const searchParams = new URLSearchParams(location.search);
+        searchParams.set('rewindTo', messageId);
+        window.location.search = searchParams.toString();
+      },
+      [location.search],
+    );
 
-    const handleFork = async (messageId: string) => {
+    const handleFork = useCallback(async (messageId: string) => {
       try {
         if (!db || !chatId.get()) {
           toast.error('Chat persistence is not available');
@@ -47,10 +49,17 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
       } catch (error) {
         toast.error('Failed to fork chat: ' + (error as Error).message);
       }
-    };
+    }, []); // db and chatId are module-level stable references
 
     return (
-      <div id={id} className={props.className} ref={ref}>
+      <div
+        id={id}
+        className={props.className}
+        ref={ref}
+        aria-live="polite"
+        aria-busy={isStreaming}
+        aria-label="Chat messages"
+      >
         {messages.length > 0
           ? messages.map((message, index) => {
               const { role, content, id: messageId, annotations, parts } = message;
@@ -59,12 +68,12 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
               const isHidden = annotations?.includes('hidden');
 
               if (isHidden) {
-                return <Fragment key={index} />;
+                return <Fragment key={messageId ?? index} />;
               }
 
               return (
                 <div
-                  key={index}
+                  key={messageId ?? index}
                   className={classNames('flex gap-4 py-3 w-full rounded-lg', {
                     'mt-4': !isFirst,
                   })}
@@ -94,7 +103,11 @@ export const Messages = forwardRef<HTMLDivElement, MessagesProps>(
             })
           : null}
         {isStreaming && (
-          <div className="text-center w-full  text-bolt-elements-item-contentAccent i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
+          <div
+            className="text-center w-full  text-bolt-elements-item-contentAccent i-svg-spinners:3-dots-fade text-4xl mt-4"
+            role="status"
+            aria-label="AI is generating a response"
+          ></div>
         )}
       </div>
     );

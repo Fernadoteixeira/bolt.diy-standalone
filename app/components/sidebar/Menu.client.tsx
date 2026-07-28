@@ -1,6 +1,6 @@
 import { useStore } from '@nanostores/react';
 import { motion, type Variants } from 'framer-motion';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { toast } from 'react-toastify';
 import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
@@ -204,18 +204,20 @@ export const Menu = () => {
     [deleteChat, loadEntries, db],
   );
 
-  const closeDialog = () => {
+  const closeDialog = useCallback(() => {
     setDialogContent(null);
-  };
+  }, []);
 
-  const toggleSelectionMode = () => {
-    setSelectionMode(!selectionMode);
+  const toggleSelectionMode = useCallback(() => {
+    setSelectionMode((prev) => {
+      if (prev) {
+        // If turning selection mode OFF, clear selection
+        setSelectedItems([]);
+      }
 
-    if (selectionMode) {
-      // If turning selection mode OFF, clear selection
-      setSelectedItems([]);
-    }
-  };
+      return !prev;
+    });
+  }, []);
 
   const toggleItemSelection = useCallback((id: string) => {
     setSelectedItems((prev) => {
@@ -305,27 +307,40 @@ export const Menu = () => {
     };
   }, [isSettingsOpen]);
 
-  const handleDuplicate = async (id: string) => {
-    await duplicateCurrentChat(id);
-    loadEntries(); // Reload the list after duplication
-  };
+  const handleDuplicate = useCallback(
+    async (id: string) => {
+      await duplicateCurrentChat(id);
+      loadEntries(); // Reload the list after duplication
+    },
+    [duplicateCurrentChat, loadEntries],
+  );
 
-  const handleSettingsClick = () => {
+  const handleSettingsClick = useCallback(() => {
     setIsSettingsOpen(true);
     setOpen(false);
-  };
+  }, []);
 
-  const handleSettingsClose = () => {
+  const handleSettingsClose = useCallback(() => {
     setIsSettingsOpen(false);
-  };
+  }, []);
 
   const setDialogContentWithLogging = useCallback((content: DialogContent) => {
     console.log('Setting dialog content:', content);
     setDialogContent(content);
   }, []);
 
+  // Memoize date-binned list — only recomputed when the filtered list changes
+  const binnedList = useMemo(() => binDates(filteredList), [filteredList]);
+
   return (
     <>
+      {open && (
+        <div
+          className="fixed inset-0 bg-black/20 dark:bg-black/40 z-[990]"
+          onClick={() => setOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <motion.div
         ref={menuRef}
         initial="closed"
@@ -423,7 +438,7 @@ export const Menu = () => {
               </div>
             )}
             <DialogRoot open={dialogContent !== null}>
-              {binDates(filteredList).map(({ category, items }) => (
+              {binnedList.map(({ category, items }) => (
                 <div key={category} className="mt-2 first:mt-0 space-y-1">
                   <div className="text-xs font-medium text-gray-500 dark:text-gray-400 sticky top-0 z-1 bg-white dark:bg-gray-950 px-4 py-1">
                     {category}
