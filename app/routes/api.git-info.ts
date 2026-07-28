@@ -6,9 +6,9 @@ let existsSync: ((path: string) => boolean) | null = null;
 // Only import fs and child_process if we're not in a Cloudflare environment
 try {
   if (typeof process !== 'undefined' && process.platform) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { execSync: nodeExecSync } = require('node:child_process');
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { existsSync: nodeExistsSync } = require('node:fs');
     execSync = nodeExecSync;
     existsSync = nodeExistsSync;

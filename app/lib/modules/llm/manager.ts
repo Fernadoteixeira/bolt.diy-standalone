@@ -1,4 +1,4 @@
-import { BaseProvider } from './base-provider';
+import { BaseProvider, registerManagerEnvAccessor } from './base-provider';
 import { resolveDefaultProviderName } from './defaults';
 import * as providers from './registry';
 import type { ModelInfo, ProviderInfo } from './types';
@@ -21,8 +21,11 @@ export class LLMManager {
     if (!LLMManager._instance) {
       LLMManager._instance = new LLMManager(env);
     } else if (Object.keys(env).length > 0) {
-      // Update env on subsequent calls so Cloudflare Workers get fresh bindings
-      LLMManager._instance._env = env;
+      /*
+       * Update env on subsequent calls so Cloudflare Workers get fresh bindings,
+       * while preserving previously set values.
+       */
+      LLMManager._instance._env = { ...LLMManager._instance._env, ...env };
     }
 
     return LLMManager._instance;
@@ -56,14 +59,22 @@ export class LLMManager {
   }
 
   registerProvider(provider: BaseProvider) {
-    if (this._providers.has(provider.name)) {
-      logger.warn(`Provider ${provider.name} is already registered. Skipping.`);
-      return;
-    }
+    try {
+      if (this._providers.has(provider.name)) {
+        logger.warn(`Provider ${provider.name} is already registered. Skipping.`);
+        return;
+      }
 
-    logger.info('Registering Provider: ', provider.name);
-    this._providers.set(provider.name, provider);
-    this._modelList = [...this._modelList, ...provider.staticModels];
+      if (!Array.isArray(provider.staticModels)) {
+        throw new Error(`Provider ${provider.name} has invalid or missing staticModels`);
+      }
+
+      logger.info('Registering Provider: ', provider.name);
+      this._providers.set(provider.name, provider);
+      this._modelList = [...this._modelList, ...provider.staticModels];
+    } catch (error: any) {
+      logger.error('Failed To Register Provider: ', provider?.name, 'error:', error?.message);
+    }
   }
 
   getProvider(name: string): BaseProvider | undefined {
@@ -88,7 +99,7 @@ export class LLMManager {
     let enabledProviders = Array.from(this._providers.values()).map((p) => p.name);
 
     if (providerSettings && Object.keys(providerSettings).length > 0) {
-      enabledProviders = enabledProviders.filter((p) => providerSettings[p].enabled);
+      enabledProviders = enabledProviders.filter((p) => providerSettings[p]?.enabled);
     }
 
     // Get dynamic models from all providers that support them
@@ -227,3 +238,9 @@ export class LLMManager {
     return firstProvider;
   }
 }
+
+/*
+ * Give BaseProvider a way to read the singleton's env without creating a
+ * static circular import between base-provider.ts and manager.ts.
+ */
+registerManagerEnvAccessor(() => LLMManager.getInstance().env);

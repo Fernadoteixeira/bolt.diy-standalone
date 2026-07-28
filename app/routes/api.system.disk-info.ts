@@ -7,7 +7,7 @@ let execSync: ((cmd: string, opts: any) => string) | null = null;
 try {
   // Check if we're in a Node.js environment
   if (typeof process !== 'undefined' && process.platform) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports, unicorn/prefer-node-protocol
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { execSync: nodeExecSync } = require('node:child_process');
     execSync = nodeExecSync;
   }

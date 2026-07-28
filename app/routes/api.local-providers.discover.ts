@@ -4,7 +4,7 @@ import { discoverLocalProviders, getRecommendedProvider } from '~/lib/services/l
 
 /**
  * API endpoint for discovering local LLM providers
- * 
+ *
  * GET /api/local-providers/discover
  * Returns list of discovered local providers with their models
  */
@@ -19,18 +19,17 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return json({
       providers: discovered,
-      recommended: recommended ? {
-        name: recommended.name,
-        baseUrl: recommended.baseUrl,
-        modelCount: recommended.models.length,
-      } : null,
+      recommended: recommended
+        ? {
+            name: recommended.name,
+            baseUrl: recommended.baseUrl,
+            modelCount: recommended.models.length,
+          }
+        : null,
     });
   } catch (error) {
     console.error('Error discovering providers:', error);
-    return json(
-      { error: 'Failed to discover providers' },
-      { status: 500 }
-    );
+    return json({ error: 'Failed to discover providers' }, { status: 500 });
   }
 }
 

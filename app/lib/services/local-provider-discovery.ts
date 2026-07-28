@@ -1,5 +1,7 @@
 import type { ModelInfo } from '~/lib/modules/llm/types';
 
+export type { ModelInfo };
+
 /**
  * Known local LLM provider endpoints
  */
@@ -23,7 +25,7 @@ export interface DiscoveredProvider {
 /**
  * Parse Ollama models response
  */
-function parseOllamaModels(data: any): ModelInfo[] {
+export function parseOllamaModels(data: any): ModelInfo[] {
   if (!data.models || !Array.isArray(data.models)) {
     return [];
   }
@@ -39,7 +41,7 @@ function parseOllamaModels(data: any): ModelInfo[] {
 /**
  * Parse LMStudio models response (OpenAI-compatible)
  */
-function parseLMStudioModels(data: any): ModelInfo[] {
+export function parseLMStudioModels(data: any): ModelInfo[] {
   if (!data.data || !Array.isArray(data.data)) {
     return [];
   }
@@ -92,7 +94,7 @@ const KNOWN_ENDPOINTS: LocalProviderEndpoint[] = [
 async function fetchModels(
   baseUrl: string,
   endpoint: string,
-  parser: (data: any) => ModelInfo[]
+  parser: (data: any) => ModelInfo[],
 ): Promise<ModelInfo[]> {
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {
@@ -107,6 +109,7 @@ async function fetchModels(
     }
 
     const data = await response.json();
+
     return parser(data);
   } catch (error) {
     throw error;
@@ -115,12 +118,12 @@ async function fetchModels(
 
 /**
  * Discover local LLM providers automatically
- * 
+ *
  * Scans common localhost ports for known LLM providers
  * and returns a list of available providers with their models.
- * 
+ *
  * @returns Promise resolving to array of discovered providers
- * 
+ *
  * @example
  * const providers = await discoverLocalProviders();
  * providers.forEach(p => {
@@ -136,11 +139,7 @@ export async function discoverLocalProviders(): Promise<DiscoveredProvider[]> {
 
       try {
         // Try health check / model endpoint
-        const models = await fetchModels(
-          baseUrl,
-          endpoint.modelEndpoint,
-          endpoint.modelParser || parseLMStudioModels
-        );
+        const models = await fetchModels(baseUrl, endpoint.modelEndpoint, endpoint.modelParser || parseLMStudioModels);
 
         discovered.push({
           name: endpoint.name,
@@ -155,7 +154,7 @@ export async function discoverLocalProviders(): Promise<DiscoveredProvider[]> {
       } catch (error) {
         // Continue to next URL
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
+
         // If this is the last URL, record the failure
         if (endpoint.urls.indexOf(baseUrl) === endpoint.urls.length - 1) {
           discovered.push({
@@ -175,16 +174,18 @@ export async function discoverLocalProviders(): Promise<DiscoveredProvider[]> {
 
 /**
  * Check if a specific provider is available
- * 
+ *
  * @param baseUrl - Base URL of the provider
  * @param healthEndpoint - Health check endpoint (optional)
  * @returns Promise resolving to availability status
  */
 export async function checkProviderAvailability(
   baseUrl: string,
-  healthEndpoint: string = '/health'
+  healthEndpoint: string = '/health',
 ): Promise<{ available: boolean; responseTime?: number; error?: string }> {
   const startTime = Date.now();
+
+  let primaryError: string | undefined;
 
   try {
     const response = await fetch(`${baseUrl}${healthEndpoint}`, {
@@ -199,49 +200,46 @@ export async function checkProviderAvailability(
       };
     }
 
-    // Try alternative endpoints if health check fails
-    const alternativeEndpoints = ['/v1/models', '/api/tags', '/api/health'];
-    
-    for (const endpoint of alternativeEndpoints) {
-      try {
-        const altResponse = await fetch(`${baseUrl}${endpoint}`, {
-          signal: AbortSignal.timeout(3000),
-        });
-
-        if (altResponse.ok) {
-          return {
-            available: true,
-            responseTime: Date.now() - startTime,
-          };
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    return {
-      available: false,
-      responseTime: Date.now() - startTime,
-      error: `Provider returned ${response.status}`,
-    };
+    primaryError = `Provider returned ${response.status}`;
   } catch (error) {
-    return {
-      available: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+    primaryError = error instanceof Error ? error.message : 'Unknown error';
   }
+
+  // Try alternative endpoints if the primary health check failed or errored
+  const alternativeEndpoints = ['/v1/models', '/api/tags', '/api/health'];
+
+  for (const endpoint of alternativeEndpoints) {
+    try {
+      const altResponse = await fetch(`${baseUrl}${endpoint}`, {
+        signal: AbortSignal.timeout(3000),
+      });
+
+      if (altResponse.ok) {
+        return {
+          available: true,
+          responseTime: Date.now() - startTime,
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    available: false,
+    responseTime: Date.now() - startTime,
+    error: primaryError,
+  };
 }
 
 /**
  * Get recommended provider based on discovery results
- * 
+ *
  * Returns the provider with the most models, or the fastest response time
  * if model counts are equal.
  */
-export function getRecommendedProvider(
-  providers: DiscoveredProvider[]
-): DiscoveredProvider | null {
-  const available = providers.filter(p => p.status === 'available');
+export function getRecommendedProvider(providers: DiscoveredProvider[]): DiscoveredProvider | null {
+  const available = providers.filter((p) => p.status === 'available');
 
   if (available.length === 0) {
     return null;
@@ -250,7 +248,11 @@ export function getRecommendedProvider(
   // Sort by model count (descending), then by response time (ascending)
   return available.sort((a, b) => {
     const modelDiff = b.models.length - a.models.length;
-    if (modelDiff !== 0) return modelDiff;
+
+    if (modelDiff !== 0) {
+      return modelDiff;
+    }
+
     return (a.responseTime || 0) - (b.responseTime || 0);
   })[0];
 }

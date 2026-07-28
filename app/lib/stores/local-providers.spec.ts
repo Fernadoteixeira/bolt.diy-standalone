@@ -21,13 +21,12 @@ vi.mock('~/lib/services/local-provider-discovery', () => ({
   checkProviderAvailability: vi.fn(),
 }));
 
-const { discoverLocalProviders, checkProviderAvailability } = await import(
-  '~/lib/services/local-provider-discovery'
-);
+const { discoverLocalProviders, checkProviderAvailability } = await import('~/lib/services/local-provider-discovery');
 
 describe('Local Providers Store', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
     // Reset store to empty state
     localProvidersStore.set([]);
   });
@@ -72,7 +71,7 @@ describe('Local Providers Store', () => {
 
       localProvidersStore.set(mockProviders);
 
-      expect(subscriber).toHaveBeenCalledWith(mockProviders);
+      expect(subscriber).toHaveBeenCalledWith(mockProviders, [], undefined);
 
       unsubscribe();
     });

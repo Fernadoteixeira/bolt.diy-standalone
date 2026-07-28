@@ -188,6 +188,7 @@ describe('Local Provider Discovery', () => {
       const result = await discoverLocalProviders();
 
       expect(result).toHaveLength(4);
+
       const ollamaProvider = result.find((p) => p.name === 'Ollama');
       expect(ollamaProvider).toBeDefined();
       expect(ollamaProvider?.status).toBe('available');
@@ -243,20 +244,20 @@ describe('Local Provider Discovery', () => {
     it('should try alternative URLs for each provider', async () => {
       const mockResponse = { models: [{ name: 'test', details: { parameter_size: '1B' } }] };
 
-      // First URL fails, second succeeds
+      // First URL (127.0.0.1) fails, second URL (localhost) succeeds
       mockFetch
-        .mockRejectedValueOnce(new Error('Connection refused')) // localhost:11434
+        .mockRejectedValueOnce(new Error('Connection refused')) // 127.0.0.1:11434
         .mockResolvedValueOnce({
           ok: true,
           json: async () => mockResponse,
-        }) // 127.0.0.1:11434
+        }) // localhost:11434
         .mockRejectedValue(new Error('Connection refused')); // Other providers
 
       const result = await discoverLocalProviders();
 
       const ollamaProvider = result.find((p) => p.name === 'Ollama');
       expect(ollamaProvider?.status).toBe('available');
-      expect(ollamaProvider?.baseUrl).toBe('http://127.0.0.1:11434');
+      expect(ollamaProvider?.baseUrl).toBe('http://localhost:11434');
     });
 
     it('should measure response time', async () => {
@@ -290,12 +291,10 @@ describe('Local Provider Discovery', () => {
     });
 
     it('should try alternative endpoints when health check fails', async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error('/health failed'))
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-        });
+      mockFetch.mockRejectedValueOnce(new Error('/health failed')).mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+      });
 
       const result = await checkProviderAvailability('http://127.0.0.1:11434', '/health');
 
@@ -324,11 +323,7 @@ describe('Local Provider Discovery', () => {
     });
 
     it('should respect timeout', async () => {
-      mockFetch.mockImplementation(() => {
-        return new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Timeout')), 10000);
-        });
-      });
+      mockFetch.mockRejectedValue(new Error('Timeout'));
 
       const result = await checkProviderAvailability('http://127.0.0.1:11434');
 

@@ -1,4 +1,4 @@
-import { map } from 'nanostores';
+import { atom } from 'nanostores';
 import { discoverLocalProviders, checkProviderAvailability } from '~/lib/services/local-provider-discovery';
 
 export interface ProviderHealthStatus {
@@ -15,7 +15,7 @@ export interface ProviderHealthStatus {
 /**
  * Store for local provider health status
  */
-export const localProvidersStore = map<ProviderHealthStatus[]>([]);
+export const localProvidersStore = atom<ProviderHealthStatus[]>([]);
 
 /**
  * Check health of a specific provider

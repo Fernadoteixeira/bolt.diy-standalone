@@ -16,11 +16,6 @@ export default defineConfig({
       '**/tests/e2e/**', // E2E tests run separately with Playwright
     ],
     setupFiles: ['./tests/setup.ts'],
-    server: {
-      deps: {
-        inline: ['vitest'],
-      },
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

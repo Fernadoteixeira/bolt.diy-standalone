@@ -83,14 +83,14 @@ describe('LLM Manager', () => {
 
     it('should warn when registering duplicate provider', () => {
       const mockProvider = new MockProvider();
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       llmManager.registerProvider(mockProvider);
       llmManager.registerProvider(mockProvider);
 
-      expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('already registered'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('already registered'));
 
-      consoleWarnSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
 
     it('should handle provider registration errors gracefully', () => {
@@ -99,14 +99,14 @@ describe('LLM Manager', () => {
         staticModels: undefined, // This should cause an error
       };
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       // @ts-ignore - intentionally testing bad input
       llmManager.registerProvider(badProvider);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed To Register'));
+      expect(consoleLogSpy).toHaveBeenCalledWith(expect.anything(), expect.stringContaining('Failed To Register'));
 
-      consoleErrorSpy.mockRestore();
+      consoleLogSpy.mockRestore();
     });
   });
 
@@ -186,10 +186,8 @@ describe('LLM Manager', () => {
     });
 
     it('should cache dynamic models', async () => {
-      const mockProvider = new MockProvider();
+      const mockProvider = llmManager.getProvider('MockProvider') as MockProvider;
       const storeDynamicModelsSpy = vi.spyOn(mockProvider, 'storeDynamicModels');
-
-      llmManager.registerProvider(mockProvider);
 
       await llmManager.updateModelList({
         apiKeys: {},
@@ -241,6 +239,12 @@ describe('LLM Manager', () => {
       (LLMManager as any)._instance = null;
 
       const emptyManager = LLMManager.getInstance({});
+
+      /*
+       * The manager auto-registers all real providers on construction; clear them
+       * to exercise the "no providers registered" edge case in isolation.
+       */
+      (emptyManager as any)._providers.clear();
 
       expect(() => emptyManager.getDefaultProvider()).toThrow('No providers registered');
     });

@@ -1,11 +1,28 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModelV1 } from 'ai';
-import { LLMManager } from './manager';
 import type { ProviderInfo, ProviderConfig, ModelInfo } from './types';
 import type { IProviderSetting } from '~/types/model';
 
 /** Default timeout for model listing API calls (5 seconds) */
 const MODEL_FETCH_TIMEOUT = 5_000;
+
+/**
+ * Lazily-registered accessor for the LLMManager singleton's env.
+ *
+ * base-provider.ts must not statically import ./manager: manager.ts imports
+ * ./registry, which imports every provider file, each of which imports
+ * BaseProvider from this module. A static import here would create a
+ * circular dependency where evaluation order (which module is imported
+ * first by a consumer) determines whether BaseProvider is fully defined
+ * before providers extend it, causing "Class extends value undefined"
+ * errors. manager.ts registers this accessor once it has finished
+ * evaluating, breaking the cycle.
+ */
+let getManagerEnv: (() => Record<string, string> | undefined) | undefined;
+
+export function registerManagerEnvAccessor(accessor: () => Record<string, string> | undefined) {
+  getManagerEnv = accessor;
+}
 
 export abstract class BaseProvider implements ProviderInfo {
   abstract name: string;
@@ -73,7 +90,7 @@ export abstract class BaseProvider implements ProviderInfo {
 
     let settingsBaseUrl = providerSettings?.baseUrl;
 
-    const manager = LLMManager.getInstance();
+    const managerEnv = getManagerEnv?.() ?? {};
 
     if (settingsBaseUrl && settingsBaseUrl.length == 0) {
       settingsBaseUrl = undefined;
@@ -85,7 +102,7 @@ export abstract class BaseProvider implements ProviderInfo {
       settingsBaseUrl ||
       serverEnv?.[baseUrlKey] ||
       process?.env?.[baseUrlKey] ||
-      manager.env?.[baseUrlKey] ||
+      managerEnv[baseUrlKey] ||
       this.config.baseUrl;
 
     if (baseUrl && baseUrl.endsWith('/')) {
@@ -95,7 +112,7 @@ export abstract class BaseProvider implements ProviderInfo {
     const apiTokenKey = this.config.apiTokenKey || defaultApiTokenKey;
 
     const apiKey =
-      apiKeys?.[this.name] || serverEnv?.[apiTokenKey] || process?.env?.[apiTokenKey] || manager.env?.[apiTokenKey];
+      apiKeys?.[this.name] || serverEnv?.[apiTokenKey] || process?.env?.[apiTokenKey] || managerEnv[apiTokenKey];
 
     return {
       baseUrl,

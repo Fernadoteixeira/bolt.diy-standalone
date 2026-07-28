@@ -4,7 +4,7 @@ import { checkProviderAvailability } from '~/lib/services/local-provider-discove
 
 /**
  * API endpoint for checking provider health
- * 
+ *
  * POST /api/local-providers/health
  * Body: { baseUrl: string }
  * Returns health status of specified provider
@@ -15,7 +15,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const body = await request.json();
+    const body = (await request.json()) as { baseUrl?: string };
     const { baseUrl } = body;
 
     if (!baseUrl) {
@@ -32,16 +32,13 @@ export async function action({ request }: ActionFunctionArgs) {
     });
   } catch (error) {
     console.error('Error checking provider health:', error);
-    return json(
-      { error: 'Failed to check provider health' },
-      { status: 500 }
-    );
+    return json({ error: 'Failed to check provider health' }, { status: 500 });
   }
 }
 
 /**
  * GET endpoint for quick health check
- * 
+ *
  * GET /api/local-providers/health?baseUrl=http://127.0.0.1:11434
  */
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -63,9 +60,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     });
   } catch (error) {
     console.error('Error checking provider health:', error);
-    return json(
-      { error: 'Failed to check provider health' },
-      { status: 500 }
-    );
+    return json({ error: 'Failed to check provider health' }, { status: 500 });
   }
 }
