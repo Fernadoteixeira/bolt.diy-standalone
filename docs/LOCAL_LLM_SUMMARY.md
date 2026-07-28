@@ -81,7 +81,7 @@ Este documento resume a análise da estratégia de LLMs da extensão Docker do O
 ### Providers Locais Suportados
 
 | Provider | Base URL | Auto-Descoberta | Suporte Docker |
-|----------|----------|-----------------|----------------|
+| ---------- | ---------- | ----------------- | ---------------- |
 | Ollama | `http://127.0.0.1:11434` | ❌ (antes) | ✅ |
 | LMStudio | `http://127.0.0.1:1234` | ❌ (antes) | ⚠️ |
 | OpenAI-like | Configurável | ❌ (antes) | ✅ |
@@ -95,6 +95,7 @@ Este documento resume a análise da estratégia de LLMs da extensão Docker do O
 **Arquivo**: `app/lib/services/local-provider-discovery.ts`
 
 **Funcionalidades**:
+
 - Varredura automática de portas comuns
 - Suporte para 4 providers locais:
   - Ollama (11434)
@@ -105,6 +106,7 @@ Este documento resume a análise da estratégia de LLMs da extensão Docker do O
 - Identificação automática de modelos disponíveis
 
 **API**:
+
 ```typescript
 const providers = await discoverLocalProviders();
 // Retorna: [{ name, baseUrl, status, models, responseTime }]
@@ -115,6 +117,7 @@ const providers = await discoverLocalProviders();
 **Arquivo**: `app/lib/stores/local-providers.ts`
 
 **Funcionalidades**:
+
 - Health checks periódicos (30s)
 - Status: Healthy/Unhealthy/Unknown
 - Monitoramento de tempo de resposta
@@ -122,6 +125,7 @@ const providers = await discoverLocalProviders();
 - Store reativo com nanostores
 
 **UI Integration**:
+
 ```typescript
 import { localProvidersStore, startProviderHealthCheck } from '~/lib/stores/local-providers';
 
@@ -139,11 +143,13 @@ const status = localProvidersStore.get();
 **Arquivo**: `app/routes/api.local-providers.discover.ts`
 
 **Uso**:
+
 ```bash
 curl -X POST http://localhost:5173/api/local-providers/discover
 ```
 
 **Resposta**:
+
 ```json
 {
   "providers": [...],
@@ -160,6 +166,7 @@ curl -X POST http://localhost:5173/api/local-providers/discover
 **Arquivo**: `app/routes/api.local-providers.health.ts`
 
 **Uso**:
+
 ```bash
 curl "http://localhost:5173/api/local-providers/health?baseUrl=http://127.0.0.1:11434"
 ```
@@ -169,6 +176,7 @@ curl "http://localhost:5173/api/local-providers/health?baseUrl=http://127.0.0.1:
 **Arquivo**: `docker-compose.local-llm.yaml`
 
 **Funcionalidades**:
+
 - Serviço Ollama opcional
 - Perfis Docker: `production`, `local-llm`, `all`
 - Suporte a GPU NVIDIA
@@ -177,6 +185,7 @@ curl "http://localhost:5173/api/local-providers/health?baseUrl=http://127.0.0.1:
 - Auto-healing
 
 **Uso**:
+
 ```bash
 # Iniciar com Ollama bundled
 pnpm run docker:run:local-llm
@@ -193,6 +202,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 **Arquivo**: `package.json`
 
 **Novos Scripts**:
+
 ```json
 {
   "docker:run:local-llm": "docker-compose --profile local-llm up -d",
@@ -210,6 +220,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 ### 4.1 LOCAL_LLM_STRATEGY_ANALYSIS.md
 
 **Conteúdo**:
+
 - Análise completa da estratégia do Open WebUI
 - Gap analysis (Bolt.diy vs Open WebUI)
 - Recomendações priorizadas
@@ -219,6 +230,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 ### 4.2 LOCAL_LLM_SETUP.md
 
 **Conteúdo**:
+
 - Guia passo-a-passo de configuração
 - Quick start (3 opções)
 - Configuração de auto-descoberta
@@ -230,6 +242,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 ### 4.3 LOCAL_LLM_FEATURES.md
 
 **Conteúdo**:
+
 - Visão geral das funcionalidades
 - Instalação e uso
 - Referência de API
@@ -244,7 +257,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 ### Antes da Implementação
 
 | Funcionalidade | Status |
-|----------------|--------|
+| ---------------- | -------- |
 | Auto-descoberta | ❌ Não implementado |
 | Health monitoring | ❌ Não implementado |
 | UI de status | ❌ Não implementado |
@@ -255,7 +268,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 ### Depois da Implementação
 
 | Funcionalidade | Status | Open WebUI |
-|----------------|--------|------------|
+| ---------------- | -------- | ------------ |
 | Auto-descoberta | ✅ Implementado | ✅ |
 | Health monitoring | ✅ Implementado | ✅ |
 | UI de status | ⚠️ Parcial (backend pronto) | ✅ |
@@ -333,24 +346,28 @@ localProvidersStore.subscribe((providers) => {
 ## 7. Próximos Passos (Roadmap)
 
 ### Fase 1: Foundation ✅ COMPLETO
+
 - [x] Serviço de auto-descoberta
 - [x] Monitoramento de saúde
 - [x] Endpoints de API
 - [x] Docker compose com Ollama
 
 ### Fase 2: UX Improvements (Em Progresso)
+
 - [ ] Componentes UI para status dos providers
 - [ ] Wizard de setup inicial
 - [ ] UI de gerenciamento de modelos
 - [ ] Indicadores visuais de saúde
 
 ### Fase 3: Docker Integration (Planejado)
+
 - [ ] Docker Desktop Extension oficial
 - [ ] Pull/install de modelos via UI
 - [ ] Gerenciamento de volumes
 - [ ] Update automático de modelos
 
 ### Fase 4: Advanced Features (Futuro)
+
 - [ ] Load balancing entre providers
 - [ ] Fallback chain automática
 - [ ] Cache inteligente de modelos

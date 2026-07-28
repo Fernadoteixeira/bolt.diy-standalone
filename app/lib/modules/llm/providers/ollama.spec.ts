@@ -1,6 +1,8 @@
 ﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import OllamaProvider from '~/lib/modules/llm/providers/ollama';
 
+// cspell:words Ollama ollama OLLAMA gguf
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -139,7 +141,7 @@ describe('OllamaProvider', () => {
     });
 
     it('should return an empty list and warn when the request times out', async () => {
-      const warnSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
       mockFetch.mockRejectedValue(new DOMException('The operation timed out', 'TimeoutError'));
 
       const models = await provider.getDynamicModels(apiKeys, settings, serverEnv);
@@ -149,7 +151,7 @@ describe('OllamaProvider', () => {
     });
 
     it('should return an empty list and warn when Ollama is not reachable', async () => {
-      const warnSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const warnSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
       mockFetch.mockRejectedValue(new TypeError('fetch failed'));
 
       const models = await provider.getDynamicModels(apiKeys, settings, serverEnv);

@@ -83,7 +83,7 @@ describe('LLM Manager', () => {
 
     it('should warn when registering duplicate provider', () => {
       const mockProvider = new MockProvider();
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
       llmManager.registerProvider(mockProvider);
       llmManager.registerProvider(mockProvider);
@@ -99,7 +99,7 @@ describe('LLM Manager', () => {
         staticModels: undefined, // This should cause an error
       };
 
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
       // @ts-ignore - intentionally testing bad input
       llmManager.registerProvider(badProvider);

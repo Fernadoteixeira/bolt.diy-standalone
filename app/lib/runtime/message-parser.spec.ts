@@ -2,6 +2,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { EnhancedStreamingMessageParser } from './enhanced-message-parser';
 import { StreamingMessageParser, type ActionCallback, type ArtifactCallback } from './message-parser';
 
+// cspell:words bolta Artifacs Artfiact Artifactt Arti artif webcontainer invalidfile
+
 interface ExpectedResult {
   output: string;
   callbacks?: {
