@@ -23,7 +23,7 @@
     "strict": true,
     "allowJs": true,
     "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "verbatimModuleSyntax": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
