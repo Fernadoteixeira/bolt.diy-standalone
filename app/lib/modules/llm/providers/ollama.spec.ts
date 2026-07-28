@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import OllamaProvider from '~/lib/modules/llm/providers/ollama';
 
 // Mock fetch globally
@@ -28,7 +28,14 @@ describe('OllamaProvider', () => {
   it('should have the expected static configuration', () => {
     expect(provider.name).toBe('Ollama');
     expect(provider.config.baseUrlKey).toBe('OLLAMA_API_BASE_URL');
-    expect(provider.staticModels).toEqual([]);
+  });
+
+  it('should expose glm-5.2:cloud as a static model', () => {
+    const glm = provider.staticModels.find((m) => m.name === 'glm-5.2:cloud');
+    expect(glm).toBeDefined();
+    expect(glm?.provider).toBe('Ollama');
+    expect(glm?.maxTokenAllowed).toBe(1_000_000);
+    expect(glm?.label).toContain('thinking');
   });
 
   describe('getDefaultNumCtx', () => {
@@ -46,7 +53,43 @@ describe('OllamaProvider', () => {
     const settings = { baseUrl: 'http://127.0.0.1:11434' } as any;
     const serverEnv = { OLLAMA_API_BASE_URL: 'http://127.0.0.1:11434' };
 
-    it('should fetch and parse models from a running Ollama instance', async () => {
+    it('should list glm-5.2:cloud when Ollama returns it', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          models: [
+            {
+              name: 'glm-5.2:cloud',
+              model: 'glm-5.2:cloud',
+              modified_at: '2026-07-28T00:00:00Z',
+              size: 0,
+              digest: 'glm-digest',
+              details: {
+                parent_model: '',
+                format: 'cloud',
+                family: 'glm5.2',
+                families: ['glm5.2'],
+                parameter_size: '756B',
+                quantization_level: '',
+              },
+            },
+          ],
+        }),
+      });
+
+      const models = await provider.getDynamicModels(apiKeys, settings, serverEnv);
+
+      expect(models).toEqual([
+        {
+          name: 'glm-5.2:cloud',
+          label: 'glm-5.2:cloud (756B)',
+          provider: 'Ollama',
+          maxTokenAllowed: 8000,
+        },
+      ]);
+    });
+
+    it('should fetch and parse local models from a running Ollama instance', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({
@@ -123,7 +166,19 @@ describe('OllamaProvider', () => {
   });
 
   describe('getModelInstance', () => {
-    it('should build a model instance using the resolved base URL', () => {
+    it('should build a model instance for glm-5.2:cloud', () => {
+      const instance = provider.getModelInstance({
+        model: 'glm-5.2:cloud',
+        apiKeys: {},
+        providerSettings: { Ollama: { baseUrl: 'http://127.0.0.1:11434' } as any },
+        serverEnv: { OLLAMA_API_BASE_URL: 'http://127.0.0.1:11434' } as any,
+      });
+
+      expect(instance).toBeDefined();
+      expect((instance as any).modelId).toBe('glm-5.2:cloud');
+    });
+
+    it('should build a model instance for llama3.2:1b', () => {
       const instance = provider.getModelInstance({
         model: 'llama3.2:1b',
         apiKeys: {},

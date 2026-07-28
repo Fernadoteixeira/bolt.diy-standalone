@@ -7,6 +7,11 @@ settings:
 overrides:
   '@typescript-eslint/utils': ^8.0.0-alpha.30
 
+patchedDependencies:
+  ollama-ai-provider@1.2.0:
+    hash: 53zciu3apw242nazppes6foaeq
+    path: patches/ollama-ai-provider@1.2.0.patch
+
 importers:
 
   .:
@@ -270,8 +275,8 @@ importers:
         specifier: ^0.10.3
         version: 0.10.3
       ollama-ai-provider:
-        specifier: ^0.15.2
-        version: 0.15.2(zod@3.25.76)
+        specifier: ^1.2.0
+        version: 1.2.0(patch_hash=53zciu3apw242nazppes6foaeq)(zod@3.25.76)
       path-browserify:
         specifier: ^1.0.1
         version: 1.0.1
@@ -7044,8 +7049,8 @@ packages:
   ofetch@1.4.1:
     resolution: {integrity: sha512-QZj2DfGplQAr2oj9KzceK9Hwz6Whxazmn85yYeVuS3u9XTMOGMRx0kO95MQ+vLsj/S/NwBDMMLU5hpxvI6Tklw==}
 
-  ollama-ai-provider@0.15.2:
-    resolution: {integrity: sha512-bMDUlYmohulD87Xrv6meuftQdmFTygtrQywy6/gqdf1bTsJFP1VCx3MrisLFBzb4mMOj02NER7yZhiGIlAx30w==}
+  ollama-ai-provider@1.2.0:
+    resolution: {integrity: sha512-jTNFruwe3O/ruJeppI/quoOUxG7NA6blG3ZyQj3lei4+NnJo7bi3eIRWqlVpRlu/mbzbFXeJSBuYQWF6pzGKww==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.0.0
@@ -17475,10 +17480,10 @@ snapshots:
       node-fetch-native: 1.6.6
       ufo: 1.6.1
 
-  ollama-ai-provider@0.15.2(zod@3.25.76):
+  ollama-ai-provider@1.2.0(patch_hash=53zciu3apw242nazppes6foaeq)(zod@3.25.76):
     dependencies:
-      '@ai-sdk/provider': 0.0.24
-      '@ai-sdk/provider-utils': 1.0.20(zod@3.25.76)
+      '@ai-sdk/provider': 1.1.3
+      '@ai-sdk/provider-utils': 2.2.8(zod@3.25.76)
       partial-json: 0.1.7
     optionalDependencies:
       zod: 3.25.76

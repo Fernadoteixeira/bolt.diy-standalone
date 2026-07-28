@@ -288,10 +288,10 @@ ${value.content}
       let _urlId = urlId;
 
       if (!urlId && firstArtifact?.id) {
-        const urlId = await getUrlId(db, firstArtifact.id);
-        _urlId = urlId;
-        navigateChat(urlId);
-        setUrlId(urlId);
+        const newUrlId = await getUrlId(db, firstArtifact.id);
+        _urlId = newUrlId;
+        navigateChat(newUrlId);
+        setUrlId(newUrlId);
       }
 
       let chatSummary: string | undefined = undefined;
@@ -323,7 +323,7 @@ ${value.content}
 
         chatId.set(nextId);
 
-        if (!urlId) {
+        if (!_urlId) {
           navigateChat(nextId);
         }
       }
@@ -342,7 +342,7 @@ ${value.content}
         db,
         finalChatId, // Use the potentially updated chatId
         [...archivedMessages, ...messages],
-        urlId,
+        _urlId,
         description.get(),
         undefined,
         chatMetadata.get(),

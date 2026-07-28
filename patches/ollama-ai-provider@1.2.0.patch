@@ -1,0 +1,28 @@
+diff --git a/dist/index.js b/dist/index.js
+index 5023072c5f4d8e80335b1df45ea1dfeda6585d3e..69d440d310cccd7cb56101e7e16d686bd0e17431 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1,4 +1,4 @@
+-"use strict";
++﻿"use strict";
+ var __defProp = Object.defineProperty;
+ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+ var __getOwnPropNames = Object.getOwnPropertyNames;
+@@ -660,7 +660,7 @@ var ollamaChatResponseSchema = import_zod2.z.object({
+   done: import_zod2.z.literal(true),
+   done_reason: import_zod2.z.string().optional().nullable(),
+   eval_count: import_zod2.z.number(),
+-  eval_duration: import_zod2.z.number(),
++  eval_duration: import_zod2.z.number().optional(),
+   load_duration: import_zod2.z.number().optional(),
+   message: import_zod2.z.object({
+     content: import_zod2.z.string(),
+@@ -694,7 +694,7 @@ var ollamaChatStreamChunkSchema = import_zod2.z.discriminatedUnion("done", [
+     created_at: import_zod2.z.string(),
+     done: import_zod2.z.literal(true),
+     eval_count: import_zod2.z.number(),
+-    eval_duration: import_zod2.z.number(),
++    eval_duration: import_zod2.z.number().optional(),
+     load_duration: import_zod2.z.number().optional(),
+     model: import_zod2.z.string(),
+     prompt_eval_count: import_zod2.z.number().optional(),

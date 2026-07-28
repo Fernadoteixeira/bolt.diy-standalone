@@ -37,7 +37,14 @@ export default class OllamaProvider extends BaseProvider {
     baseUrlKey: 'OLLAMA_API_BASE_URL',
   };
 
-  staticModels: ModelInfo[] = [];
+  staticModels: ModelInfo[] = [
+    {
+      name: 'glm-5.2:cloud',
+      label: 'GLM-5.2 Cloud (1M ctx, thinking)',
+      provider: 'Ollama',
+      maxTokenAllowed: 1000000,
+    },
+  ];
 
   getDefaultNumCtx(serverEnv?: Env): number {
     const envRecord = this.convertEnvToRecord(serverEnv);

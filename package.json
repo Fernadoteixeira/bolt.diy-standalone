@@ -23,7 +23,6 @@
     "test:all": "pnpm run test:unit && pnpm run test:e2e",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint app",
     "lint:fix": "npm run lint -- --fix && prettier app --write",
-    
     "start": "node start-electron.js",
     "start:electron": "node start-electron.js",
     "start:web": "node -e \"const { spawn } = require('child_process'); const isWindows = process.platform === 'win32'; const cmd = isWindows ? 'npm run start:windows' : 'npm run start:unix'; const child = spawn(cmd, { shell: true, stdio: 'inherit' }); child.on('exit', code => process.exit(code));\"",
@@ -152,7 +151,7 @@
     "lucide-react": "^0.485.0",
     "mime": "^4.1.0",
     "nanostores": "^0.10.3",
-    "ollama-ai-provider": "^0.15.2",
+    "ollama-ai-provider": "^1.2.0",
     "path-browserify": "^1.0.1",
     "react": "^18.3.1",
     "react-beautiful-dnd": "^13.1.1",
@@ -230,5 +229,10 @@
   "resolutions": {
     "@typescript-eslint/utils": "^8.0.0-alpha.30"
   },
-  "packageManager": "pnpm@9.14.4"
+  "packageManager": "pnpm@9.14.4",
+  "pnpm": {
+    "patchedDependencies": {
+      "ollama-ai-provider@1.2.0": "patches/ollama-ai-provider@1.2.0.patch"
+    }
+  }
 }
