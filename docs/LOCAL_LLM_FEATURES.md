@@ -1,6 +1,7 @@
 # Bolt.diy Local LLM Features
 
-Enhanced local LLM support for Bolt.diy, inspired by the Open WebUI Docker Extension strategy.
+Enhanced local LLM support for Bolt.diy, inspired by the Open WebUI Docker
+Extension strategy.
 
 ## Overview
 
@@ -387,16 +388,16 @@ DEFAULT_NUM_CTX=16384
 
 ## Comparison with Open WebUI
 
-| Feature            | Open WebUI     | Bolt.diy (New) |
-|--------------------|----------------|----------------|
-| Auto-discovery     | ✅             | ✅             |
-| Health monitoring  | ✅             | ✅             |
-| Bundled Ollama     | ✅             | ✅             |
-| Multi-provider     | ⚠️ Basic       | ✅ Advanced   |
-| Provider settings  | ⚠️ Limited     | ✅ Per-provider|
-| Dynamic caching    | ⚠️ Basic       | ✅ Smart caching|
-| Cloudflare Workers | ❌             | ✅             |
-| Electron app       | ❌             | ✅             |
+| Feature            | Open WebUI       | Bolt.diy (New)   |
+|--------------------|------------------|------------------|
+| Auto-discovery     | Yes              | Yes              |
+| Health monitoring  | Yes              | Yes              |
+| Bundled Ollama     | Yes              | Yes              |
+| Multi-provider     | Partial Basic    | Yes Advanced     |
+| Provider settings  | Partial Limited  | Yes Per-provider |
+| Dynamic caching    | Partial Basic    | Yes Smart caching|
+| Cloudflare Workers | No               | Yes              |
+| Electron app       | No               | Yes              |
 
 ## Roadmap
 

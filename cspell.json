@@ -1,0 +1,20 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "Bolt",
+    "diy",
+    "Ollama",
+    "LMStudio",
+    "WebUI",
+    "CodeLlama",
+    "GGUF",
+    "GPT4All"
+  ],
+  "overrides": [
+    {
+      "filename": "docs/LOCAL_LLM_SUMMARY.md",
+      "language": "en,pt"
+    }
+  ]
+}

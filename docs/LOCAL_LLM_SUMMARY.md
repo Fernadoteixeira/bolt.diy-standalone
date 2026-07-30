@@ -2,7 +2,8 @@
 
 ## Visão Geral
 
-Este documento resume a análise da estratégia de LLMs da extensão Docker do Open WebUI e as melhorias implementadas para o Bolt.diy.
+Este documento resume a análise da estratégia de LLMs da extensão Docker do Open
+WebUI e as melhorias implementadas para o Bolt.diy.
 
 ---
 
@@ -522,6 +523,7 @@ package.json (novos scripts Docker)
 
 ---
 
-**Autor**: Análise implementada baseada na estratégia do Open WebUI Docker Extension  
+**Autor**: Análise implementada baseada na estratégia do Open WebUI Docker
+Extension  
 **Data**: 15 de abril de 2026  
 **Status**: Implementação concluída (Fase 1 completa)

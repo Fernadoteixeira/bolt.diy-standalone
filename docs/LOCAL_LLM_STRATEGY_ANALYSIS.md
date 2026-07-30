@@ -2,7 +2,8 @@
 
 ## Executive Summary
 
-Analysis of the Open WebUI Docker Extension's LLM strategy and recommendations for enhancing Bolt.diy's local LLM capabilities.
+Analysis of the Open WebUI Docker Extension's LLM strategy and recommendations
+for enhancing Bolt.diy's local LLM capabilities.
 
 ---
 
@@ -577,14 +578,17 @@ volumes:
 
 ## 7. Conclusion
 
-Bolt.diy already has a superior multi-provider architecture compared to Open WebUI. By implementing the recommended improvements, particularly:
+Bolt.diy already has a superior multi-provider architecture compared to Open
+WebUI. By implementing the recommended improvements, particularly:
 
 1. **Auto-discovery** for zero-config local setup
 2. **Health monitoring** for better UX
 3. **Docker integration** for bundled local LLM support
 4. **Model management UI** for easier model handling
 
-Bolt.diy can provide a best-in-class local LLM experience that surpasses Open WebUI while maintaining its existing strengths in provider abstraction and Cloudflare Workers support.
+Bolt.diy can provide a best-in-class local LLM experience that surpasses Open
+WebUI while maintaining its existing strengths in provider abstraction and
+Cloudflare Workers support.
 
 ---
 

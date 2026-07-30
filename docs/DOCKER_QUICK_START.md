@@ -73,6 +73,7 @@ docker system prune -a --volumes
 ## Environment Variables
 
 Edit `.env.docker` to customize paths:
+
 ```bash
 BOLT_DATA_PATH=./.docker/data
 BOLT_CACHE_PATH=./.docker/cache
@@ -122,6 +123,7 @@ docker system df
 ## Production Deployment
 
 For production, use absolute paths and separate docker volumes:
+
 ```bash
 # Use dedicated volume path
 /data/bolt/data/

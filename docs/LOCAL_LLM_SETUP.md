@@ -1,6 +1,7 @@
 # Local LLM Setup Guide for Bolt.diy
 
-This guide explains how to set up and use local LLM providers with Bolt.diy, including auto-discovery, bundled Ollama, and manual provider configuration.
+This guide explains how to set up and use local LLM providers with Bolt.diy,
+including auto-discovery, bundled Ollama, and manual provider configuration.
 
 ## Table of Contents
 
@@ -61,12 +62,12 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 
 Bolt.diy scans common localhost ports for LLM providers:
 
-| Provider | Default URLs | Health Endpoint |
-|----------|--------------|-----------------|
-| Ollama   | `http://127.0.0.1:11434`, `http://localhost:11434` | `/api/tags` |
-| LMStudio | `http://127.0.0.1:1234`, `http://localhost:1234` | `/v1/models` |
-| Jan.ai   | `http://127.0.0.1:1337`, `http://localhost:1337` | `/v1/models` |
-| GPT4All  | `http://127.0.0.1:4891`, `http://localhost:4891` | `/api/v1/models` |
+| Provider | Default URLs                                                     | Health Endpoint   |
+|----------|------------------------------------------------------------------|-------------------|
+| Ollama   | `http://127.0.0.1:11434`, `http://localhost:11434`               | `/api/tags`       |
+| LMStudio | `http://127.0.0.1:1234`, `http://localhost:1234`                 | `/v1/models`      |
+| Jan.ai   | `http://127.0.0.1:1337`, `http://localhost:1337`                 | `/v1/models`      |
+| GPT4All  | `http://127.0.0.1:4891`, `http://localhost:4891`                 | `/api/v1/models`  |
 
 ### API Endpoint
 
@@ -224,6 +225,7 @@ docker-compose down -v ollama-models
    ollama pull llama3.2:3b
    ollama pull qwen2.5:7b
    ```
+
 4. **Configure in Bolt**:
    - Base URL: `http://127.0.0.1:11434`
    - No API key required
@@ -325,6 +327,7 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
    curl http://127.0.0.1:11434/api/tags  # Ollama
    curl http://127.0.0.1:1234/v1/models  # LMStudio
    ```
+
 2. Check firewall settings
 3. Try alternative URL (localhost vs 127.0.0.1)
 4. Manually add provider in settings
@@ -340,11 +343,13 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
    ```bash
    OLLAMA_API_BASE_URL=http://host.docker.internal:11434
    ```
+
 2. On Linux, add to `/etc/hosts`:
 
    ```text
    172.17.0.1 host.docker.internal
    ```
+
 3. On Windows/Mac, Docker Desktop handles this automatically
 
 ### Ollama Slow or Out of Memory
@@ -356,16 +361,19 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
    ```bash
    ollama pull llama3.2:1b  # Instead of 7b
    ```
+
 2. Reduce context window:
 
    ```bash
    export DEFAULT_NUM_CTX=8192
    ```
+
 3. Limit parallel requests:
 
    ```bash
    OLLAMA_NUM_PARALLEL=1
    ```
+
 4. Enable GPU acceleration
 
 ### Models Not Loading
@@ -379,6 +387,7 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
    ```bash
    ollama pull gemma:7b
    ```
+
 2. Check model compatibility
 3. Restart provider service
 4. Verify disk space
