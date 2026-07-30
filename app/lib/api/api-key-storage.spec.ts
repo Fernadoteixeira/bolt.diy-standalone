@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 let apiKeyStorageModule: typeof import('./api-key-storage');
 
 class MockCustomEvent {
-  public type: string;
-  public detail?: unknown;
+  type: string;
+  detail?: unknown;
 
   constructor(type: string, init?: { detail?: unknown }) {
     this.type = type;
@@ -36,6 +36,7 @@ describe('api-key-storage', () => {
     storage.clear();
     dispatchEventMock.mockClear();
     fakeWindow.document.cookie = '';
+
     const globalWithOverrides = globalThis as typeof globalThis & {
       window: any;
       document: any;

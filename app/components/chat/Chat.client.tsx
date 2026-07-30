@@ -9,6 +9,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { BaseChat } from './BaseChat';
 import type { ElementInfo } from '~/components/workbench/Inspector';
+import { API_KEYS_STORAGE_EVENT, getApiKeysFromStorage } from '~/lib/api/api-key-storage';
 import { useMessageParser, usePromptEnhancer, useShortcuts } from '~/lib/hooks';
 import { useSettings } from '~/lib/hooks/useSettings';
 import { chatId, description, useChatHistory } from '~/lib/persistence';
@@ -22,7 +23,6 @@ import type { LlmErrorAlertType } from '~/types/actions';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ProviderInfo } from '~/types/model';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
-import { API_KEYS_STORAGE_EVENT, getApiKeysFromStorage } from '~/lib/api/api-key-storage';
 import { debounce } from '~/utils/debounce';
 import { cubicEasingFn } from '~/utils/easings';
 import { filesToArtifacts } from '~/utils/fileUtils';
@@ -122,6 +122,7 @@ export const ChatImpl = memo(
       };
 
       window.addEventListener(API_KEYS_STORAGE_EVENT, handleApiKeysUpdate as EventListener);
+
       return () => window.removeEventListener(API_KEYS_STORAGE_EVENT, handleApiKeysUpdate as EventListener);
     }, []);
 

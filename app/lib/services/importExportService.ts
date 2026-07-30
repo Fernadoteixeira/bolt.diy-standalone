@@ -239,6 +239,7 @@ export class ImportExportService {
     });
 
     saveApiKeysToStorage(newKeys);
+
     return newKeys;
   }
 

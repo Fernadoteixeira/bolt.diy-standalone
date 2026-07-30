@@ -14,112 +14,112 @@ interface AppContext {
 
 export const loader: LoaderFunction = withSecurity(
   async ({ request, context }: LoaderFunctionArgs & { context: AppContext }) => {
-  // Get environment variables
-  const envVars = {
-    hasGithubToken: Boolean(process.env.GITHUB_ACCESS_TOKEN || context.env?.GITHUB_ACCESS_TOKEN),
-    hasNetlifyToken: Boolean(process.env.NETLIFY_TOKEN || context.env?.NETLIFY_TOKEN),
-    nodeEnv: process.env.NODE_ENV,
-  };
+    // Get environment variables
+    const envVars = {
+      hasGithubToken: Boolean(process.env.GITHUB_ACCESS_TOKEN || context.env?.GITHUB_ACCESS_TOKEN),
+      hasNetlifyToken: Boolean(process.env.NETLIFY_TOKEN || context.env?.NETLIFY_TOKEN),
+      nodeEnv: process.env.NODE_ENV,
+    };
 
-  // Check cookies
-  const cookieHeader = request.headers.get('Cookie') || '';
+    // Check cookies
+    const cookieHeader = request.headers.get('Cookie') || '';
 
-  const cookies = cookieHeader.split(';').reduce(
-    (acc, cookie) => {
-      const [key, value] = cookie.trim().split('=');
+    const cookies = cookieHeader.split(';').reduce(
+      (acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
 
-      if (key) {
-        acc[key] = value;
-      }
+        if (key) {
+          acc[key] = value;
+        }
 
-      return acc;
-    },
-    {} as Record<string, string>,
-  );
-
-  const hasGithubTokenCookie = Boolean(cookies.githubToken);
-  const hasGithubUsernameCookie = Boolean(cookies.githubUsername);
-  const hasNetlifyCookie = Boolean(cookies.netlifyToken);
-
-  // Get local storage status (this can only be checked client-side)
-  const localStorageStatus = {
-    explanation: 'Local storage can only be checked on the client side. Use browser devtools to check.',
-    githubKeysToCheck: ['github_connection'],
-    netlifyKeysToCheck: ['netlify_connection'],
-  };
-
-  // Check if CORS might be an issue
-  const corsStatus = {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    },
-  };
-
-  // Check if API endpoints are reachable
-  const apiEndpoints = {
-    githubUser: '/api/github/user',
-    githubRepos: '/api/github/repos',
-    githubOrgs: '/api/github/orgs',
-    githubActivity: '/api/github/activity',
-    gitInfo: '/api/system/git-info',
-  };
-
-  // Test GitHub API connectivity
-  let githubApiStatus;
-
-  try {
-    const githubResponse = await fetch('https://api.github.com/zen', {
-      method: 'GET',
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
+        return acc;
       },
-    });
+      {} as Record<string, string>,
+    );
 
-    githubApiStatus = {
-      isReachable: githubResponse.ok,
-      status: githubResponse.status,
-      statusText: githubResponse.statusText,
+    const hasGithubTokenCookie = Boolean(cookies.githubToken);
+    const hasGithubUsernameCookie = Boolean(cookies.githubUsername);
+    const hasNetlifyCookie = Boolean(cookies.netlifyToken);
+
+    // Get local storage status (this can only be checked client-side)
+    const localStorageStatus = {
+      explanation: 'Local storage can only be checked on the client side. Use browser devtools to check.',
+      githubKeysToCheck: ['github_connection'],
+      netlifyKeysToCheck: ['netlify_connection'],
     };
-  } catch (error) {
-    githubApiStatus = {
-      isReachable: false,
-      error: error instanceof Error ? error.message : String(error),
+
+    // Check if CORS might be an issue
+    const corsStatus = {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
     };
-  }
 
-  // Test Netlify API connectivity
-  let netlifyApiStatus;
-
-  try {
-    const netlifyResponse = await fetch('https://api.netlify.com/api/v1/', {
-      method: 'GET',
-    });
-
-    netlifyApiStatus = {
-      isReachable: netlifyResponse.ok,
-      status: netlifyResponse.status,
-      statusText: netlifyResponse.statusText,
+    // Check if API endpoints are reachable
+    const apiEndpoints = {
+      githubUser: '/api/github/user',
+      githubRepos: '/api/github/repos',
+      githubOrgs: '/api/github/orgs',
+      githubActivity: '/api/github/activity',
+      gitInfo: '/api/system/git-info',
     };
-  } catch (error) {
-    netlifyApiStatus = {
-      isReachable: false,
-      error: error instanceof Error ? error.message : String(error),
+
+    // Test GitHub API connectivity
+    let githubApiStatus;
+
+    try {
+      const githubResponse = await fetch('https://api.github.com/zen', {
+        method: 'GET',
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+
+      githubApiStatus = {
+        isReachable: githubResponse.ok,
+        status: githubResponse.status,
+        statusText: githubResponse.statusText,
+      };
+    } catch (error) {
+      githubApiStatus = {
+        isReachable: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    // Test Netlify API connectivity
+    let netlifyApiStatus;
+
+    try {
+      const netlifyResponse = await fetch('https://api.netlify.com/api/v1/', {
+        method: 'GET',
+      });
+
+      netlifyApiStatus = {
+        isReachable: netlifyResponse.ok,
+        status: netlifyResponse.status,
+        statusText: netlifyResponse.statusText,
+      };
+    } catch (error) {
+      netlifyApiStatus = {
+        isReachable: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    // Provide technical details about the environment
+    const technicalDetails = {
+      serverTimestamp: new Date().toISOString(),
+      userAgent: request.headers.get('User-Agent'),
+      referrer: request.headers.get('Referer'),
+      host: request.headers.get('Host'),
+      method: request.method,
+      url: request.url,
     };
-  }
 
-  // Provide technical details about the environment
-  const technicalDetails = {
-    serverTimestamp: new Date().toISOString(),
-    userAgent: request.headers.get('User-Agent'),
-    referrer: request.headers.get('Referer'),
-    host: request.headers.get('Host'),
-    method: request.method,
-    url: request.url,
-  };
-
-  // Return diagnostics
+    // Return diagnostics
     return json(
       {
         status: 'success',

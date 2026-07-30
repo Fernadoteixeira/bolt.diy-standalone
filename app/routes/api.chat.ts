@@ -8,8 +8,8 @@ import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import { formatMemoryContext, rememberConversation, searchRelevantMemories } from '~/lib/.server/memory/service';
-import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api/request-credentials';
+import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
 import { MCPService } from '~/lib/services/mcpService';
 import type { ContextAnnotation, ProgressAnnotation } from '~/types/context';
 import type { DesignScheme } from '~/types/design-scheme';

@@ -7,7 +7,7 @@ Este guia explica como configurar e usar persistência nos containers Docker do 
 O `docker-compose.yaml` foi configurado com **3 volumes nomeados** para persistência automática:
 
 | Volume | Localização Padrão | Propósito |
-|--------|-------------------|----------|
+| -------- | ------------------- | ---------- |
 | `bolt-data` | `.docker/data` | Config Wrangler e dados da aplicação |
 | `bolt-cache` | `.docker/cache` | Cache de build |
 | `bolt-npm-cache` | `.docker/npm-cache` | Cache de pacotes NPM |
@@ -15,6 +15,7 @@ O `docker-compose.yaml` foi configurado com **3 volumes nomeados** para persist�
 ## 🚀 Início Rápido
 
 ### Windows (PowerShell)
+
 ```powershell
 # Desenvolvimento
 .\scripts\docker-setup.ps1 -Profile development
@@ -27,6 +28,7 @@ O `docker-compose.yaml` foi configurado com **3 volumes nomeados** para persist�
 ```
 
 ### Linux/macOS (Bash)
+
 ```bash
 # Desenvolvimento
 ./scripts/docker-setup.sh development
@@ -75,26 +77,31 @@ BOLT_NPM_CACHE_PATH=./.docker/npm-cache
 ## 📊 Monitoramento e Gerenciamento
 
 ### Ver logs em tempo real
+
 ```bash
 docker-compose logs -f
 ```
 
 ### Ver status dos containers
+
 ```bash
 docker-compose ps
 ```
 
 ### Parar serviços (mantém volumes)
+
 ```bash
 docker-compose down
 ```
 
 ### Parar e remover volumes (cuidado!)
+
 ```bash
 docker-compose down -v
 ```
 
 ### Reconstruir sem cache
+
 ```bash
 docker-compose build --no-cache
 ```
@@ -102,21 +109,25 @@ docker-compose build --no-cache
 ## 💾 Conteúdo dos Volumes
 
 ### `bolt-data` (.docker/data)
+
 - Configuração do Wrangler (`.wrangler/`)
 - Dados da aplicação
 - Logs persistentes
 
 ### `bolt-cache` (.docker/cache)
+
 - Cache de build do Remix/Vite
 - Otimiza rebuilds subsequentes
 
 ### `bolt-npm-cache` (.docker/npm-cache)
+
 - Cache de pacotes NPM
 - Acelera instalações de dependências
 
 ## 🔒 Segurança
 
 ⚠️ **Importante**: Diretórios de dados persistentes podem conter dados sensíveis
+
 - Não commite `.docker/` no git (já está em `.gitignore`)
 - Em produção, use volumes Docker nomeados em vez de bind mounts
 - Implemente permissões de arquivo apropriadas
@@ -124,12 +135,14 @@ docker-compose build --no-cache
 ## 🚨 Troubleshooting
 
 ### "Permission denied" ao iniciar
+
 ```bash
 # Linux/macOS: Ajuste permissões
 sudo chown -R $(id -u):$(id -g) .docker
 ```
 
 ### Volumes não estão persistindo
+
 ```bash
 # Verifique se os volumes existem
 docker volume ls | grep bolt
@@ -139,6 +152,7 @@ docker volume inspect bolt-data
 ```
 
 ### Limpeza completa
+
 ```bash
 # Remove containers e volumes (IRREVERSÍVEL!)
 docker-compose down -v --remove-orphans
@@ -157,6 +171,7 @@ Para deployments em produção:
 4. **Rotação de logs** para evitar crescimento infinito
 
 ### Exemplo para Produção
+
 ```yaml
 volumes:
   bolt-data:
@@ -171,12 +186,14 @@ volumes:
 ## 🔄 Atualizações e Migrações
 
 ### Backup antes de atualizar
+
 ```bash
 # Copiar dados persistentes
 cp -r .docker/data .docker/data.backup
 ```
 
 ### Restaurar dados
+
 ```bash
 # Em caso de problemas
 rm -rf .docker/data

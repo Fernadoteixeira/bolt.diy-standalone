@@ -68,6 +68,7 @@ export function getApiKeysFromStorage(): Record<string, string> {
   if (legacyApiKeys && Object.keys(legacyApiKeys).length > 0) {
     saveApiKeysToStorage(legacyApiKeys);
     clearLegacyCookie();
+
     return legacyApiKeys;
   }
 
