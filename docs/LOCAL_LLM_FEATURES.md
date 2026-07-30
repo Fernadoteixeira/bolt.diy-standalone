@@ -29,6 +29,7 @@ Bolt.diy now automatically discovers local LLM providers running on your system:
 ```
 
 **Usage**:
+
 - Go to Settings → Providers
 - Click "Discover Local Providers"
 - Enable discovered providers
@@ -55,6 +56,7 @@ docker-compose --profile local-llm up -d
 ```
 
 **Features**:
+
 - Persistent model storage
 - GPU support (NVIDIA)
 - Auto-healing with health checks
@@ -78,11 +80,13 @@ POST /api/local-providers/health
 ### Quick Start
 
 1. **Install dependencies** (if not already done):
+
    ```bash
    pnpm install
    ```
 
 2. **Start your local LLM provider**:
+
    ```bash
    # Ollama
    ollama serve
@@ -92,12 +96,13 @@ POST /api/local-providers/health
    ```
 
 3. **Start Bolt.diy**:
+
    ```bash
    pnpm run dev
    ```
 
 4. **Discover providers**:
-   - Open http://localhost:5173
+   - Open [http://localhost:5173](http://localhost:5173)
    - Go to Settings → Providers
    - Click "Discover Local Providers"
    - Enable discovered providers
@@ -105,16 +110,18 @@ POST /api/local-providers/health
 ### Docker Setup with Ollama
 
 1. **Start with bundled Ollama**:
+
    ```bash
    pnpm run docker:run:local-llm
    ```
 
 2. **Pull a model**:
+
    ```bash
    pnpm run docker:ollama:pull gemma:7b
    ```
 
-3. **Access Bolt**: http://localhost:5173
+3. **Access Bolt**: [http://localhost:5173](http://localhost:5173)
 
 ## Configuration
 
@@ -181,19 +188,19 @@ const status = localProvidersStore.get();
 
 ## Supported Providers
 
-| Provider | Auto-Discover | Health Check | Model Fetch | Docker Support |
-|----------|---------------|--------------|-------------|----------------|
-| Ollama | ✅ | ✅ | ✅ | ✅ Bundled |
-| LMStudio | ✅ | ✅ | ✅ | ⚠️ Host only |
-| Jan.ai | ✅ | ✅ | ✅ | ⚠️ Host only |
-| GPT4All | ✅ | ✅ | ✅ | ⚠️ Host only |
-| OpenAI-Like | ❌ | ✅ | ✅ | ✅ |
+| Provider     | Auto-Discover | Health Check | Model Fetch | Docker Support |
+|--------------|---------------|--------------|-------------|----------------|
+| Ollama       | ✅            | ✅           | ✅          | ✅ Bundled     |
+| LMStudio     | ✅            | ✅           | ✅          | ⚠️ Host only   |
+| Jan.ai       | ✅            | ✅           | ✅          | ⚠️ Host only   |
+| GPT4All      | ✅            | ✅           | ✅          | ⚠️ Host only   |
+| OpenAI-Like  | ❌            | ✅           | ✅          | ✅             |
 
 ## Architecture
 
 ### Files Added
 
-```
+```text
 app/
 ├── lib/
 │   ├── services/
@@ -212,7 +219,7 @@ docs/
 
 ### Data Flow
 
-```
+```text
 ┌─────────────────┐
 │   Bolt UI       │
 │  Settings Page  │
@@ -265,11 +272,13 @@ docs/
 Discover local LLM providers.
 
 **Request**:
+
 ```bash
 curl -X POST http://localhost:5173/api/local-providers/discover
 ```
 
 **Response**:
+
 ```json
 {
   "providers": [
@@ -296,11 +305,13 @@ curl -X POST http://localhost:5173/api/local-providers/discover
 Check provider health.
 
 **Request**:
+
 ```bash
 curl "http://localhost:5173/api/local-providers/health?baseUrl=http://127.0.0.1:11434"
 ```
 
 **Response**:
+
 ```json
 {
   "baseUrl": "http://127.0.0.1:11434",
@@ -315,6 +326,7 @@ curl "http://localhost:5173/api/local-providers/health?baseUrl=http://127.0.0.1:
 Check provider health with JSON body.
 
 **Request**:
+
 ```bash
 curl -X POST http://localhost:5173/api/local-providers/health \
   -H "Content-Type: application/json" \
@@ -326,6 +338,7 @@ curl -X POST http://localhost:5173/api/local-providers/health \
 ### Provider Not Discovered
 
 1. Verify provider is running:
+
    ```bash
    curl http://127.0.0.1:11434/api/tags
    ```
@@ -337,6 +350,7 @@ curl -X POST http://localhost:5173/api/local-providers/health \
 ### Docker Can't Access Host
 
 Use `host.docker.internal`:
+
 ```bash
 OLLAMA_API_BASE_URL=http://host.docker.internal:11434
 ```
@@ -351,12 +365,12 @@ OLLAMA_API_BASE_URL=http://host.docker.internal:11434
 
 ### Model Recommendations
 
-| Use Case | Model | Size | Speed |
-|----------|-------|------|-------|
-| General | `gemma:7b` | 7B | Fast |
-| Coding | `codellama:7b` | 7B | Fast |
-| Accuracy | `llama3.2:3b` | 3B | Very Fast |
-| Large Context | `llama3.1:8b` | 8B | Medium |
+| Use Case      | Model               | Size | Speed      |
+|---------------|---------------------|------|------------|
+| General       | `gemma:7b`          | 7B   | Fast       |
+| Coding        | `codellama:7b`      | 7B   | Fast       |
+| Accuracy      | `llama3.2:3b`       | 3B   | Very Fast  |
+| Large Context | `llama3.1:8b`       | 8B   | Medium     |
 
 ### Resource Optimization
 
@@ -373,30 +387,33 @@ DEFAULT_NUM_CTX=16384
 
 ## Comparison with Open WebUI
 
-| Feature | Open WebUI | Bolt.diy (New) |
-|---------|------------|----------------|
-| Auto-discovery | ✅ | ✅ |
-| Health monitoring | ✅ | ✅ |
-| Bundled Ollama | ✅ | ✅ |
-| Multi-provider | ⚠️ Basic | ✅ Advanced |
-| Provider settings | ⚠️ Limited | ✅ Per-provider |
-| Dynamic caching | ⚠️ Basic | ✅ Smart caching |
-| Cloudflare Workers | ❌ | ✅ |
-| Electron app | ❌ | ✅ |
+| Feature            | Open WebUI     | Bolt.diy (New) |
+|--------------------|----------------|----------------|
+| Auto-discovery     | ✅             | ✅             |
+| Health monitoring  | ✅             | ✅             |
+| Bundled Ollama     | ✅             | ✅             |
+| Multi-provider     | ⚠️ Basic       | ✅ Advanced   |
+| Provider settings  | ⚠️ Limited     | ✅ Per-provider|
+| Dynamic caching    | ⚠️ Basic       | ✅ Smart caching|
+| Cloudflare Workers | ❌             | ✅             |
+| Electron app       | ❌             | ✅             |
 
 ## Roadmap
 
 ### Phase 1 (Completed)
+
 - ✅ Auto-discovery service
 - ✅ Health monitoring
 - ✅ API endpoints
 
 ### Phase 2 (In Progress)
+
 - [ ] UI components for provider status
 - [ ] Model management UI
 - [ ] Setup wizard
 
 ### Phase 3 (Planned)
+
 - [ ] Docker extension packaging
 - [ ] Load balancing
 - [ ] Model pull/install from UI

@@ -1,32 +1,39 @@
 # Docker Quick Start Guide
 
 ## Fast Setup (Windows)
+
 ```powershell
 .\scripts\docker-setup.ps1 -Profile production
 ```
 
 ## Fast Setup (Linux/macOS)
+
 ```bash
 ./scripts/docker-setup.sh production
 ```
 
 ## Manual Setup
+
 1. Create volume directories:
+
    ```bash
    mkdir -p .docker/{data,cache,npm-cache}
    ```
 
 2. Load environment:
+
    ```bash
    source .env.docker
    ```
 
 3. Start with persistent volumes:
+
    ```bash
    docker-compose -f docker-compose.yaml --profile production up -d
    ```
 
 ## Verify Setup
+
 ```bash
 # Check running containers
 docker ps
@@ -42,11 +49,13 @@ curl -v http://localhost:5173
 ```
 
 ## Stop Services
+
 ```bash
 docker-compose down
 ```
 
 ## Clean Up
+
 ```bash
 # Remove volumes (preserves data in .docker/ directory)
 docker volume prune
@@ -56,11 +65,13 @@ docker system prune -a --volumes
 ```
 
 ## Volume Paths
+
 - **Data**: `.docker/data/` (Wrangler config, app data)
 - **Cache**: `.docker/cache/` (Build artifacts, Vite cache)
 - **NPM Cache**: `.docker/npm-cache/` (NPM packages)
 
 ## Environment Variables
+
 Edit `.env.docker` to customize paths:
 ```bash
 BOLT_DATA_PATH=./.docker/data
@@ -69,6 +80,7 @@ BOLT_NPM_CACHE_PATH=./.docker/npm-cache
 ```
 
 For production (absolute paths):
+
 ```bash
 BOLT_DATA_PATH=/data/bolt/data
 BOLT_CACHE_PATH=/data/bolt/cache
@@ -78,6 +90,7 @@ BOLT_NPM_CACHE_PATH=/data/bolt/npm-cache
 ## Troubleshooting
 
 ### Permission Denied
+
 ```bash
 # Check volume ownership
 ls -la .docker/
@@ -87,6 +100,7 @@ chmod -R 755 .docker/
 ```
 
 ### Volume Not Mounting
+
 ```bash
 # Inspect volume configuration
 docker volume inspect bolt-data
@@ -96,6 +110,7 @@ docker-compose config
 ```
 
 ### Container Won't Start
+
 ```bash
 # View detailed logs
 docker-compose logs app-prod
@@ -105,6 +120,7 @@ docker system df
 ```
 
 ## Production Deployment
+
 For production, use absolute paths and separate docker volumes:
 ```bash
 # Use dedicated volume path

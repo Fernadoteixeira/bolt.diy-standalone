@@ -25,6 +25,7 @@ Bolt.diy can automatically discover local LLM providers running on your system.
 4. **Enable discovered providers**
 
 Supported auto-discovered providers:
+
 - Ollama (port 11434)
 - LMStudio (port 1234)
 - Jan.ai (port 1337)
@@ -61,11 +62,11 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 Bolt.diy scans common localhost ports for LLM providers:
 
 | Provider | Default URLs | Health Endpoint |
-|----------|-------------|-----------------|
-| Ollama | `http://127.0.0.1:11434`, `http://localhost:11434` | `/api/tags` |
+|----------|--------------|-----------------|
+| Ollama   | `http://127.0.0.1:11434`, `http://localhost:11434` | `/api/tags` |
 | LMStudio | `http://127.0.0.1:1234`, `http://localhost:1234` | `/v1/models` |
-| Jan.ai | `http://127.0.0.1:1337`, `http://localhost:1337` | `/v1/models` |
-| GPT4All | `http://127.0.0.1:4891`, `http://localhost:4891` | `/api/v1/models` |
+| Jan.ai   | `http://127.0.0.1:1337`, `http://localhost:1337` | `/v1/models` |
+| GPT4All  | `http://127.0.0.1:4891`, `http://localhost:4891` | `/api/v1/models` |
 
 ### API Endpoint
 
@@ -154,7 +155,7 @@ docker exec -it bolt-ollama ollama pull codellama:7b
 
 #### 4. Configure Bolt.diy
 
-1. Open http://localhost:5173
+1. Open [http://localhost:5173](http://localhost:5173)
 2. Go to **Settings** → **Providers**
 3. **Ollama** should show as "Healthy" with model count
 4. Select a model from the dropdown
@@ -214,9 +215,10 @@ docker-compose down -v ollama-models
 
 ### Ollama (Self-Hosted)
 
-1. **Install Ollama**: https://ollama.com/download
+1. **Install Ollama**: [https://ollama.com/download](https://ollama.com/download)
 2. **Start Ollama**: `ollama serve`
 3. **Pull Models**:
+
    ```bash
    ollama pull gemma:7b
    ollama pull llama3.2:3b
@@ -228,7 +230,7 @@ docker-compose down -v ollama-models
 
 ### LMStudio
 
-1. **Install LMStudio**: https://lmstudio.ai/
+1. **Install LMStudio**: [https://lmstudio.ai/](https://lmstudio.ai/)
 2. **Download Models** from LMStudio UI
 3. **Start Local Server**:
    - Click "Start Server" in LMStudio
@@ -239,7 +241,7 @@ docker-compose down -v ollama-models
 
 ### Jan.ai
 
-1. **Install Jan**: https://jan.ai/
+1. **Install Jan**: [https://jan.ai/](https://jan.ai/)
 2. **Download Models** from Jan UI
 3. **Start Server** in Jan settings
 4. **Configure in Bolt**:
@@ -288,7 +290,7 @@ ollama pull phi3:mini          # Microsoft's efficient model
 export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 ```
 
-### LMStudio
+### LMStudio Configuration
 
 #### Model Recommendations
 
@@ -316,7 +318,9 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 **Symptoms**: Auto-discovery doesn't find your provider
 
 **Solutions**:
+
 1. Verify provider is running:
+
    ```bash
    curl http://127.0.0.1:11434/api/tags  # Ollama
    curl http://127.0.0.1:1234/v1/models  # LMStudio
@@ -330,12 +334,15 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 **Symptoms**: "Connection refused" errors in Docker
 
 **Solutions**:
+
 1. Use `host.docker.internal` instead of `localhost`:
+
    ```bash
    OLLAMA_API_BASE_URL=http://host.docker.internal:11434
    ```
 2. On Linux, add to `/etc/hosts`:
-   ```
+
+   ```text
    172.17.0.1 host.docker.internal
    ```
 3. On Windows/Mac, Docker Desktop handles this automatically
@@ -343,15 +350,19 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 ### Ollama Slow or Out of Memory
 
 **Solutions**:
+
 1. Use smaller models:
+
    ```bash
    ollama pull llama3.2:1b  # Instead of 7b
    ```
 2. Reduce context window:
+
    ```bash
    export DEFAULT_NUM_CTX=8192
    ```
 3. Limit parallel requests:
+
    ```bash
    OLLAMA_NUM_PARALLEL=1
    ```
@@ -362,7 +373,9 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 **Symptoms**: Provider shows 0 models
 
 **Solutions**:
+
 1. Pull at least one model:
+
    ```bash
    ollama pull gemma:7b
    ```
@@ -373,8 +386,10 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 ### CORS Errors (LMStudio/Jan)
 
 **Solutions**:
+
 1. Enable CORS in provider settings
 2. Use browser extension to bypass CORS (development only)
+
 3. Run Bolt in development mode with CORS proxy
 
 ### Health Check Failing
@@ -382,9 +397,11 @@ export DEFAULT_NUM_CTX=16384   # Reduce for faster responses
 **Symptoms**: Provider shows as "Unhealthy"
 
 **Solutions**:
+
 1. Check provider logs
 2. Verify endpoint URLs
 3. Test manually:
+
    ```bash
    curl -X POST http://localhost:5173/api/local-providers/health \
      -H "Content-Type: application/json" \
@@ -459,10 +476,10 @@ Add custom models to provider:
 
 | Model Size | RAM Required | VRAM Recommended | Context Window |
 |------------|--------------|------------------|----------------|
-| 1B-3B | 4-8 GB | 2-4 GB | 4K-8K |
-| 7B-8B | 8-16 GB | 6-8 GB | 8K-16K |
-| 13B-14B | 16-32 GB | 12-16 GB | 16K-32K |
-| 70B+ | 64+ GB | 24+ GB | 32K+ |
+| 1B-3B      | 4-8 GB       | 2-4 GB           | 4K-8K          |
+| 7B-8B      | 8-16 GB      | 6-8 GB           | 8K-16K         |
+| 13B-14B    | 16-32 GB     | 12-16 GB         | 16K-32K        |
+| 70B+       | 64+ GB       | 24+ GB           | 32K+           |
 
 ---
 
@@ -478,6 +495,7 @@ Add custom models to provider:
 ## Support
 
 For issues or questions:
+
 1. Check this guide's troubleshooting section
 2. Review provider-specific documentation
 3. Open an issue on the Bolt.diy repository

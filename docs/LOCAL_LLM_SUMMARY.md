@@ -10,7 +10,7 @@ Este documento resume a análise da estratégia de LLMs da extensão Docker do O
 
 ### Arquitetura
 
-```
+```text
 ┌─────────────────────────────────────┐
 │     Docker Desktop Extension UI     │
 │  - Configuração de imagem           │
@@ -55,7 +55,7 @@ Este documento resume a análise da estratégia de LLMs da extensão Docker do O
 
 ### Arquitetura Existente
 
-```
+```text
 ┌─────────────────────────────────────┐
 │        Bolt.diy Frontend            │
 │  - UI de configurações              │
@@ -286,7 +286,7 @@ docker exec -it bolt-ollama ollama pull gemma:7b
 
 ### Fluxo de Auto-Descoberta
 
-```
+```text
 ┌─────────────────┐
 │   Bolt UI       │
 │  Settings Page  │
@@ -493,7 +493,7 @@ pnpm run dev
 
 ### Novos Arquivos
 
-```
+```text
 app/lib/services/local-provider-discovery.ts
 app/lib/stores/local-providers.ts
 app/routes/api.local-providers.discover.ts
@@ -507,7 +507,7 @@ docs/LOCAL_LLM_SUMMARY.md (este arquivo)
 
 ### Arquivos Modificados
 
-```
+```text
 package.json (novos scripts Docker)
 ```
 

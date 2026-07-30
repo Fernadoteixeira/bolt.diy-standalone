@@ -12,7 +12,7 @@ Analysis of the Open WebUI Docker Extension's LLM strategy and recommendations f
 
 The Open WebUI Docker Extension uses a **multi-layer provider abstraction**:
 
-```
+```text
 ┌─────────────────────────────────────┐
 │     Docker Desktop Extension UI     │
 │  - Image tag configuration          │
@@ -57,7 +57,7 @@ The Open WebUI Docker Extension uses a **multi-layer provider abstraction**:
 
 ### Current State
 
-```
+```text
 ┌─────────────────────────────────────┐
 │        Bolt.diy Frontend            │
 │  - Provider settings UI             │
@@ -82,11 +82,11 @@ The Open WebUI Docker Extension uses a **multi-layer provider abstraction**:
 
 ### Supported Local Providers
 
-| Provider | Base URL | Auto-Discovery | Docker Support |
-|----------|----------|----------------|----------------|
-| Ollama | `http://127.0.0.1:11434` | ✅ `/api/tags` | ✅ `host.docker.internal` |
-| LMStudio | `http://127.0.0.1:1234` | ❌ Manual config | ⚠️ Requires CORS |
-| OpenAI-like | Configurable | ⚠️ Env var only | ✅ Supported |
+| Provider     | Base URL                               | Auto-Discovery          | Docker Support            |
+|--------------|----------------------------------------|-------------------------|---------------------------|
+| Ollama       | `http://127.0.0.1:11434`               | ✅ `/api/tags`          | ✅ `host.docker.internal` |
+| LMStudio     | `http://127.0.0.1:1234`                | ❌ Manual config        | ⚠️ Requires CORS          |
+| OpenAI-like  | Configurable                           | ⚠️ Env var only         | ✅ Supported              |
 
 ### Current Docker Configuration
 
@@ -107,25 +107,25 @@ environment:
 
 ### Missing Features (vs Open WebUI)
 
-| Feature | Open WebUI | Bolt.diy | Priority |
-|---------|------------|----------|----------|
-| Auto-detect local providers | ✅ | ❌ | High |
-| Provider health checks | ✅ | ❌ | High |
-| One-click local setup | ✅ | ❌ | High |
-| Model pull/install UI | ✅ | ❌ | Medium |
-| Context window auto-detection | ⚠️ Partial | ⚠️ Partial | Medium |
-| Docker extension packaging | ✅ | ❌ | Low |
-| Multiple local provider support | ✅ | ⚠️ Limited | Medium |
+| Feature                           | Open WebUI     | Bolt.diy        | Priority |
+|-----------------------------------|----------------|-----------------|----------|
+| Auto-detect local providers       | ✅             | ❌              | High     |
+| Provider health checks            | ✅             | ❌              | High     |
+| One-click local setup             | ✅             | ❌              | High     |
+| Model pull/install UI             | ✅             | ❌              | Medium   |
+| Context window auto-detection     | ⚠️ Partial     | ⚠️ Partial      | Medium   |
+| Docker extension packaging        | ✅             | ❌              | Low      |
+| Multiple local provider support   | ✅             | ⚠️ Limited      | Medium   |
 
 ### Bolt.diy Advantages
 
-| Feature | Bolt.diy | Open WebUI |
-|---------|----------|------------|
-| Multi-provider abstraction | ✅ Better | ⚠️ Basic |
-| Provider-specific settings | ✅ Advanced | ⚠️ Limited |
-| Dynamic model caching | ✅ | ⚠️ Basic |
-| Cloudflare Workers support | ✅ | ❌ |
-| Electron desktop app | ✅ | ❌ |
+| Feature                       | Bolt.diy        | Open WebUI     |
+|-------------------------------|-----------------|----------------|
+| Multi-provider abstraction    | ✅ Better       | ⚠️ Basic       |
+| Provider-specific settings    | ✅ Advanced     | ⚠️ Limited     |
+| Dynamic model caching         | ✅              | ⚠️ Basic       |
+| Cloudflare Workers support    | ✅              | ❌             |
+| Electron desktop app          | ✅              | ❌             |
 
 ---
 
@@ -194,6 +194,7 @@ export async function discoverLocalProviders(): Promise<DiscoveredProvider[]> {
 ```
 
 **Benefits**:
+
 - Zero-config local LLM setup
 - Better UX for non-technical users
 - Automatic failover between URLs
@@ -488,21 +489,25 @@ Configure automatic fallback when primary provider fails
 ## 5. Implementation Roadmap
 
 ### Phase 1: Foundation (Week 1-2)
+
 - [ ] Auto-discovery service
 - [ ] Health monitoring
 - [ ] Enhanced error handling
 
 ### Phase 2: UX Improvements (Week 3-4)
+
 - [ ] Provider status UI indicators
 - [ ] Setup wizard
 - [ ] Model management UI
 
 ### Phase 3: Docker Integration (Week 5-6)
+
 - [ ] Optional Ollama service in docker-compose
 - [ ] Docker-aware configuration
 - [ ] Volume management
 
 ### Phase 4: Advanced Features (Week 7-8)
+
 - [ ] Load balancing
 - [ ] Smart context detection
 - [ ] Performance optimization
@@ -585,7 +590,7 @@ Bolt.diy can provide a best-in-class local LLM experience that surpasses Open We
 
 ## References
 
-- Open WebUI Docker Extension: https://github.com/rw4lll/open-webui-docker-extension
-- Ollama API Documentation: https://github.com/ollama/ollama/blob/main/docs/api.md
-- LMStudio API: https://lmstudio.ai/docs/local-server
-- Bolt.diy Repository: https://github.com/stackblitz-labs/bolt.diy
+- Open WebUI Docker Extension: [https://github.com/rw4lll/open-webui-docker-extension](https://github.com/rw4lll/open-webui-docker-extension)
+- Ollama API Documentation: [https://github.com/ollama/ollama/blob/main/docs/api.md](https://github.com/ollama/ollama/blob/main/docs/api.md)
+- LMStudio API: [https://lmstudio.ai/docs/local-server](https://lmstudio.ai/docs/local-server)
+- Bolt.diy Repository: [https://github.com/stackblitz-labs/bolt.diy](https://github.com/stackblitz-labs/bolt.diy)
