@@ -1,6 +1,6 @@
-import Cookies from 'js-cookie';
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconButton } from '~/components/ui/IconButton';
+import { getApiKeysFromStorage, saveApiKeysToStorage } from '~/lib/api/api-key-storage';
 import type { ProviderInfo } from '~/types/model';
 
 interface APIKeyManagerProps {
@@ -14,22 +14,8 @@ interface APIKeyManagerProps {
 // cache which stores whether the provider's API key is set via environment variable
 const providerEnvKeyStatusCache: Record<string, boolean> = {};
 
-const apiKeyMemoizeCache: { [k: string]: Record<string, string> } = {};
-
 export function getApiKeysFromCookies() {
-  const storedApiKeys = Cookies.get('apiKeys');
-
-  let parsedKeys: Record<string, string> = {};
-
-  if (storedApiKeys) {
-    parsedKeys = apiKeyMemoizeCache[storedApiKeys];
-
-    if (!parsedKeys) {
-      parsedKeys = apiKeyMemoizeCache[storedApiKeys] = JSON.parse(storedApiKeys);
-    }
-  }
-
-  return parsedKeys;
+  return getApiKeysFromStorage();
 }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -57,7 +43,14 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
     }
 
     try {
-      const response = await fetch(`/api/check-env-key?provider=${encodeURIComponent(provider.name)}`);
+      const apiKeys = getApiKeysFromCookies();
+      const headers = new Headers();
+
+      if (apiKeys && Object.keys(apiKeys).length > 0) {
+        headers.set('X-Api-Keys', encodeURIComponent(JSON.stringify(apiKeys)));
+      }
+
+      const response = await fetch(`/api/check-env-key?provider=${encodeURIComponent(provider.name)}`, { headers });
       const data = await response.json();
       const isSet = (data as { isSet: boolean }).isSet;
 
@@ -78,10 +71,10 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({ provider, apiKey, 
     // Save to parent state
     setApiKey(tempKey);
 
-    // Save to cookies
+    // Persist to session storage instead of long-lived cookies
     const currentKeys = getApiKeysFromCookies();
     const newKeys = { ...currentKeys, [provider.name]: tempKey };
-    Cookies.set('apiKeys', JSON.stringify(newKeys));
+    saveApiKeysToStorage(newKeys);
 
     setIsEditing(false);
   };

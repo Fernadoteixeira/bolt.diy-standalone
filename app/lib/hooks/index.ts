@@ -3,6 +3,7 @@ export * from './usePromptEnhancer';
 export * from './useShortcuts';
 export * from './StickToBottom';
 export * from './useEditChatDescription';
+export * from './useSpeechRecognition';
 export { default } from './useViewport';
 export { useFeatures } from './useFeatures';
 export { useNotifications } from './useNotifications';

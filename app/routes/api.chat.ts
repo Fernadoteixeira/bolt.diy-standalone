@@ -9,6 +9,7 @@ import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import { extractPropertiesFromMessage } from '~/lib/.server/llm/utils';
 import { formatMemoryContext, rememberConversation, searchRelevantMemories } from '~/lib/.server/memory/service';
 import { CONTINUE_PROMPT } from '~/lib/common/prompts/prompts';
+import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api/request-credentials';
 import { MCPService } from '~/lib/services/mcpService';
 import type { ContextAnnotation, ProgressAnnotation } from '~/types/context';
 import type { DesignScheme } from '~/types/design-scheme';
@@ -22,24 +23,6 @@ export async function action(args: ActionFunctionArgs) {
 
 const logger = createScopedLogger('api.chat');
 
-function parseCookies(cookieHeader: string): Record<string, string> {
-  const cookies: Record<string, string> = {};
-
-  const items = cookieHeader.split(';').map((cookie) => cookie.trim());
-
-  items.forEach((item) => {
-    const [name, ...rest] = item.split('=');
-
-    if (name && rest) {
-      const decodedName = decodeURIComponent(name.trim());
-      const decodedValue = decodeURIComponent(rest.join('=').trim());
-      cookies[decodedName] = decodedValue;
-    }
-  });
-
-  return cookies;
-}
-
 async function chatAction({ context, request }: ActionFunctionArgs) {
   const streamRecovery = new StreamRecoveryManager({
     timeout: 45000,
@@ -49,30 +32,34 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
     },
   });
 
+  const payload = await request.json<{
+    messages: Messages;
+    files: any;
+    promptId?: string;
+    contextOptimization: boolean;
+    chatMode: 'discuss' | 'build';
+    designScheme?: DesignScheme;
+    chatId?: string;
+    database?: {
+      connected: boolean;
+      memoryCount?: number;
+      vectorDimensions?: number;
+      tileTemplate?: string;
+    };
+    maxLLMSteps: number;
+    apiKeys?: Record<string, string>;
+    providerSettings?: Record<string, IProviderSetting>;
+  }>();
+
   const { messages, files, promptId, contextOptimization, database, chatId, chatMode, designScheme, maxLLMSteps } =
-    await request.json<{
-      messages: Messages;
-      files: any;
-      promptId?: string;
-      contextOptimization: boolean;
-      chatMode: 'discuss' | 'build';
-      designScheme?: DesignScheme;
-      chatId?: string;
-      database?: {
-        connected: boolean;
-        memoryCount?: number;
-        vectorDimensions?: number;
-        tileTemplate?: string;
-      };
-      maxLLMSteps: number;
-    }>();
+    payload;
 
-  const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = JSON.parse(parseCookies(cookieHeader || '').apiKeys || '{}');
+  const apiKeys = getApiKeysFromRequest(request, payload);
 
-  const providerSettings: Record<string, IProviderSetting> = JSON.parse(
-    parseCookies(cookieHeader || '').providers || '{}',
-  );
+  const providerSettings: Record<string, IProviderSetting> = getProviderSettingsFromRequest(request, payload) as Record<
+    string,
+    IProviderSetting
+  >;
 
   const stream = new SwitchableStream();
 

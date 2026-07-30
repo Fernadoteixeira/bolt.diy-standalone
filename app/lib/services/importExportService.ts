@@ -1,5 +1,6 @@
 import { type Message } from 'ai';
 import Cookies from 'js-cookie';
+import { getApiKeysFromStorage, saveApiKeysToStorage } from '~/lib/api/api-key-storage';
 import { getAllChats, deleteChat } from '~/lib/persistence/chats';
 
 interface ExtendedMessage extends Message {
@@ -80,8 +81,8 @@ export class ImportExportService {
           // Provider configurations from localStorage
           provider_settings: this._safeGetItem('provider_settings'),
 
-          // API keys from cookies
-          apiKeys: allCookies.apiKeys,
+          // API keys from session storage
+          apiKeys: getApiKeysFromStorage(),
 
           // Selected provider and model
           selectedModel: allCookies.selectedModel,
@@ -199,11 +200,7 @@ export class ImportExportService {
    * @param keys The API keys to import
    */
   static importAPIKeys(keys: Record<string, any>): Record<string, string> {
-    // Get existing keys from cookies
-    const existingKeys = (() => {
-      const storedApiKeys = Cookies.get('apiKeys');
-      return storedApiKeys ? JSON.parse(storedApiKeys) : {};
-    })();
+    const existingKeys = getApiKeysFromStorage();
 
     // Validate and save each key
     const newKeys = { ...existingKeys };
@@ -241,6 +238,7 @@ export class ImportExportService {
       }
     });
 
+    saveApiKeysToStorage(newKeys);
     return newKeys;
   }
 

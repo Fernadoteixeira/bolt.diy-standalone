@@ -1,5 +1,19 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 
+export type UserRole = 'user' | 'operator' | 'admin';
+
+export interface AccessContext {
+  role: UserRole;
+  permissions: string[];
+  isAuthenticated: boolean;
+}
+
+const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  user: ['read:self'],
+  operator: ['read:self', 'read:diagnostics', 'read:metrics'],
+  admin: ['*', 'read:self', 'read:diagnostics', 'read:metrics', 'manage:users'],
+};
+
 // Rate limiting store (in-memory for serverless environments)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
@@ -167,6 +181,70 @@ export function sanitizeErrorMessage(error: unknown, isDevelopment = false): str
   return 'An unexpected error occurred';
 }
 
+function normalizePermissions(rawPermissions: string | null | undefined): string[] {
+  if (!rawPermissions) {
+    return [];
+  }
+
+  return rawPermissions
+    .split(',')
+    .map((permission) => permission.trim())
+    .filter(Boolean);
+}
+
+export function getAccessContext(request: Request): AccessContext {
+  const roleHeader = request.headers.get('x-user-role') || request.headers.get('X-User-Role');
+  const role = (roleHeader === 'operator' || roleHeader === 'admin' ? roleHeader : 'user') as UserRole;
+  const permissionsHeader = request.headers.get('x-user-permissions');
+  const explicitPermissions = normalizePermissions(permissionsHeader);
+  const permissions = explicitPermissions.length > 0 ? explicitPermissions : ROLE_PERMISSIONS[role];
+
+  return {
+    role,
+    permissions,
+    isAuthenticated: Boolean(roleHeader || permissionsHeader || request.headers.get('authorization')),
+  };
+}
+
+export function hasRole(request: Request, roles: UserRole[]): boolean {
+  const { role } = getAccessContext(request);
+  return roles.includes(role);
+}
+
+export function hasPermission(request: Request, permission: string): boolean {
+  const { permissions } = getAccessContext(request);
+  return permissions.includes('*') || permissions.includes(permission);
+}
+
+export function authorizeRequest(
+  request: Request,
+  options: {
+    requireAuth?: boolean;
+    roles?: UserRole[];
+    permissions?: string[];
+  } = {},
+): { allowed: boolean; reason?: 'auth-required' | 'role-forbidden' | 'permission-forbidden'; access: AccessContext } {
+  const access = getAccessContext(request);
+
+  if (options.requireAuth && !access.isAuthenticated) {
+    return { allowed: false, reason: 'auth-required', access };
+  }
+
+  if (options.roles && options.roles.length > 0 && !hasRole(request, options.roles)) {
+    return { allowed: false, reason: 'role-forbidden', access };
+  }
+
+  if (options.permissions && options.permissions.length > 0) {
+    const hasAllPermissions = options.permissions.every((permission) => hasPermission(request, permission));
+
+    if (!hasAllPermissions) {
+      return { allowed: false, reason: 'permission-forbidden', access };
+    }
+  }
+
+  return { allowed: true, access };
+}
+
 /**
  * Security wrapper for API routes
  */
@@ -176,6 +254,8 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
     requireAuth?: boolean;
     rateLimit?: boolean;
     allowedMethods?: string[];
+    roles?: UserRole[];
+    permissions?: string[];
   } = {},
 ) {
   return async (args: ActionFunctionArgs | LoaderFunctionArgs): Promise<Response> => {
@@ -189,6 +269,23 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
         status: 405,
         headers: createSecurityHeaders(),
       });
+    }
+
+    if (options.requireAuth || options.roles || options.permissions) {
+      const accessResult = authorizeRequest(request, options);
+
+      if (!accessResult.allowed) {
+        const status = accessResult.reason === 'auth-required' ? 401 : 403;
+        const message = accessResult.reason === 'auth-required' ? 'Authentication required' : 'Forbidden';
+
+        return new Response(JSON.stringify({ error: true, message }), {
+          status,
+          headers: {
+            ...createSecurityHeaders(),
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     }
 
     // Apply rate limiting

@@ -2,7 +2,7 @@ import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { generateText } from 'ai';
 import { MAX_TOKENS, PROVIDER_COMPLETION_LIMITS, isReasoningModel } from '~/lib/.server/llm/constants';
 import { streamText } from '~/lib/.server/llm/stream-text';
-import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api/request-credentials';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
@@ -65,13 +65,17 @@ function validateTokenLimits(modelDetails: ModelInfo, requestedTokens: number): 
 }
 
 async function llmCallAction({ context, request }: ActionFunctionArgs) {
-  const { system, message, model, provider, streamOutput } = await request.json<{
+  const payload = await request.json<{
     system: string;
     message: string;
     model: string;
     provider: ProviderInfo;
     streamOutput?: boolean;
+    apiKeys?: Record<string, string>;
+    providerSettings?: Record<string, IProviderSetting>;
   }>();
+
+  const { system, message, model, provider, streamOutput } = payload;
 
   const { name: providerName } = provider;
 
@@ -90,9 +94,8 @@ async function llmCallAction({ context, request }: ActionFunctionArgs) {
     });
   }
 
-  const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = getApiKeysFromCookie(cookieHeader);
-  const providerSettings = getProviderSettingsFromCookie(cookieHeader);
+  const apiKeys = getApiKeysFromRequest(request, payload);
+  const providerSettings = getProviderSettingsFromRequest(request, payload);
 
   if (streamOutput) {
     try {

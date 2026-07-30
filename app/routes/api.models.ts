@@ -1,5 +1,5 @@
 import { json } from '@remix-run/cloudflare';
-import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api/request-credentials';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { ProviderInfo } from '~/types/model';
@@ -51,10 +51,8 @@ export async function loader({
 }): Promise<Response> {
   const llmManager = LLMManager.getInstance(context.cloudflare?.env);
 
-  // Get client side maintained API keys and provider settings from cookies
-  const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = getApiKeysFromCookie(cookieHeader);
-  const providerSettings = getProviderSettingsFromCookie(cookieHeader);
+  const apiKeys = getApiKeysFromRequest(request);
+  const providerSettings = getProviderSettingsFromRequest(request);
 
   const { providers, defaultProvider } = getProviderInfo(llmManager);
 

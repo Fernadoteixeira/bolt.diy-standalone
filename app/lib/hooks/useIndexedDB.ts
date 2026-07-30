@@ -9,6 +9,14 @@ export function useIndexedDB() {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
+    /*
+     * Track the opened DB instance locally so the cleanup function can close it.
+     * Capturing `db` from useState would always be null here (the state is updated
+     * asynchronously inside the success callback, but the cleanup captures the value
+     * at effect-creation time).
+     */
+    let dbInstance: IDBDatabase | null = null;
+
     const initDB = async () => {
       try {
         setIsLoading(true);
@@ -31,6 +39,7 @@ export function useIndexedDB() {
 
         request.onsuccess = (event) => {
           const database = (event.target as IDBOpenDBRequest).result;
+          dbInstance = database;
           setDb(database);
           setIsLoading(false);
         };
@@ -48,9 +57,7 @@ export function useIndexedDB() {
     initDB();
 
     return () => {
-      if (db) {
-        db.close();
-      }
+      dbInstance?.close();
     };
   }, []);
 

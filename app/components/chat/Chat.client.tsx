@@ -22,6 +22,7 @@ import type { LlmErrorAlertType } from '~/types/actions';
 import { defaultDesignScheme, type DesignScheme } from '~/types/design-scheme';
 import type { ProviderInfo } from '~/types/model';
 import { DEFAULT_MODEL, DEFAULT_PROVIDER, PROMPT_COOKIE_KEY, PROVIDER_LIST } from '~/utils/constants';
+import { API_KEYS_STORAGE_EVENT, getApiKeysFromStorage } from '~/lib/api/api-key-storage';
 import { debounce } from '~/utils/debounce';
 import { cubicEasingFn } from '~/utils/easings';
 import { filesToArtifacts } from '~/utils/fileUtils';
@@ -112,7 +113,18 @@ export const ChatImpl = memo(
 
     const { showChat } = useStore(chatStore);
     const [animationScope, animate] = useAnimate();
-    const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
+
+    const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromStorage());
+
+    useEffect(() => {
+      const handleApiKeysUpdate = () => {
+        setApiKeys(getApiKeysFromStorage());
+      };
+
+      window.addEventListener(API_KEYS_STORAGE_EVENT, handleApiKeysUpdate as EventListener);
+      return () => window.removeEventListener(API_KEYS_STORAGE_EVENT, handleApiKeysUpdate as EventListener);
+    }, []);
+
     const [chatMode, setChatMode] = useState<'discuss' | 'build'>('build');
     const [selectedElement, setSelectedElement] = useState<ElementInfo | null>(null);
     const mcpSettings = useMCPStore((state) => state.settings);
@@ -577,14 +589,6 @@ export const ChatImpl = memo(
       }, 1000),
       [],
     );
-
-    useEffect(() => {
-      const storedApiKeys = Cookies.get('apiKeys');
-
-      if (storedApiKeys) {
-        setApiKeys(JSON.parse(storedApiKeys));
-      }
-    }, []);
 
     const handleModelChange = useCallback((newModel: string) => {
       setModel(newModel);

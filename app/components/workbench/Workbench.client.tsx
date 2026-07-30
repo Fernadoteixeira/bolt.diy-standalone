@@ -310,15 +310,15 @@ export const Workbench = memo(
     const { exportChat } = useChatHistory();
     const [isSyncing, setIsSyncing] = useState(false);
 
-    const setSelectedView = (view: WorkbenchViewType) => {
+    const setSelectedView = useCallback((view: WorkbenchViewType) => {
       workbenchStore.currentView.set(view);
-    };
+    }, []);
 
     useEffect(() => {
       if (hasPreview) {
         setSelectedView('preview');
       }
-    }, [hasPreview]);
+    }, [hasPreview, setSelectedView]);
 
     useEffect(() => {
       workbenchStore.setDocuments(files);

@@ -1,4 +1,5 @@
 import { json, type LoaderFunction, type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 /**
  * Diagnostic API for troubleshooting connection issues
@@ -11,7 +12,8 @@ interface AppContext {
   };
 }
 
-export const loader: LoaderFunction = async ({ request, context }: LoaderFunctionArgs & { context: AppContext }) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ request, context }: LoaderFunctionArgs & { context: AppContext }) => {
   // Get environment variables
   const envVars = {
     hasGithubToken: Boolean(process.env.GITHUB_ACCESS_TOKEN || context.env?.GITHUB_ACCESS_TOKEN),
@@ -118,26 +120,32 @@ export const loader: LoaderFunction = async ({ request, context }: LoaderFunctio
   };
 
   // Return diagnostics
-  return json(
-    {
-      status: 'success',
-      environment: envVars,
-      cookies: {
-        hasGithubTokenCookie,
-        hasGithubUsernameCookie,
-        hasNetlifyCookie,
+    return json(
+      {
+        status: 'success',
+        environment: envVars,
+        cookies: {
+          hasGithubTokenCookie,
+          hasGithubUsernameCookie,
+          hasNetlifyCookie,
+        },
+        localStorage: localStorageStatus,
+        apiEndpoints,
+        externalApis: {
+          github: githubApiStatus,
+          netlify: netlifyApiStatus,
+        },
+        corsStatus,
+        technicalDetails,
       },
-      localStorage: localStorageStatus,
-      apiEndpoints,
-      externalApis: {
-        github: githubApiStatus,
-        netlify: netlifyApiStatus,
+      {
+        headers: corsStatus.headers,
       },
-      corsStatus,
-      technicalDetails,
-    },
-    {
-      headers: corsStatus.headers,
-    },
-  );
-};
+    );
+  },
+  {
+    allowedMethods: ['GET'],
+    roles: ['admin', 'operator'],
+    permissions: ['read:diagnostics'],
+  },
+);

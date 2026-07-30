@@ -1,12 +1,10 @@
 import { json } from '@remix-run/cloudflare';
-import { getApiKeysFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest } from '~/lib/api/request-credentials';
 import { withSecurity } from '~/lib/security';
 
 async function netlifyUserLoader({ request, context }: { request: Request; context: any }) {
   try {
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
+    const apiKeys = getApiKeysFromRequest(request);
 
     // Try to get Netlify token from various sources
     const netlifyToken =
@@ -71,9 +69,7 @@ async function netlifyUserAction({ request, context }: { request: Request; conte
     const formData = await request.formData();
     const action = formData.get('action');
 
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
+    const apiKeys = getApiKeysFromRequest(request);
 
     // Try to get Netlify token from various sources
     const netlifyToken =

@@ -1,12 +1,10 @@
 import { json } from '@remix-run/cloudflare';
-import { getApiKeysFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest } from '~/lib/api/request-credentials';
 import { withSecurity } from '~/lib/security';
 
 async function vercelUserLoader({ request, context }: { request: Request; context: any }) {
   try {
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
+    const apiKeys = getApiKeysFromRequest(request);
 
     // Try to get Vercel token from various sources
     let vercelToken =
@@ -82,9 +80,7 @@ async function vercelUserAction({ request, context }: { request: Request; contex
     const formData = await request.formData();
     const action = formData.get('action');
 
-    // Get API keys from cookies (server-side only)
-    const cookieHeader = request.headers.get('Cookie');
-    const apiKeys = getApiKeysFromCookie(cookieHeader);
+    const apiKeys = getApiKeysFromRequest(request);
 
     // Try to get Vercel token from various sources
     let vercelToken =

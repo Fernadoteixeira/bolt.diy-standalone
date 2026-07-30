@@ -1,4 +1,5 @@
 import ignore from 'ignore';
+import { getApiKeysFromStorage } from '~/lib/api/api-key-storage';
 import { STARTER_TEMPLATES } from './constants';
 import type { ProviderInfo } from '~/types/model';
 import type { Template } from '~/types/template';
@@ -91,8 +92,16 @@ export const selectStarterTemplate = async (options: { message: string; model: s
     provider,
     system: starterTemplateSelectionPrompt(templates),
   };
+  const apiKeys = getApiKeysFromStorage();
+  const headers = new Headers({ 'Content-Type': 'application/json' });
+
+  if (apiKeys && Object.keys(apiKeys).length > 0) {
+    headers.set('X-Api-Keys', encodeURIComponent(JSON.stringify(apiKeys)));
+  }
+
   const response = await fetch('/api/llmcall', {
     method: 'POST',
+    headers,
     body: JSON.stringify(requestBody),
   });
 

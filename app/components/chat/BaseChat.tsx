@@ -5,10 +5,9 @@
 import { useStore } from '@nanostores/react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import type { JSONValue, Message } from 'ai';
-import Cookies from 'js-cookie';
 import React, { type RefCallback, useCallback, useEffect, useState } from 'react';
 import { ClientOnly } from 'remix-utils/client-only';
-import { getApiKeysFromCookies } from './APIKeyManager';
+import { getApiKeysFromStorage, saveApiKeysToStorage } from '~/lib/api/api-key-storage';
 import styles from './BaseChat.module.scss';
 import ChatAlert from './ChatAlert';
 import { ChatBox } from './ChatBox';
@@ -25,6 +24,7 @@ import { Menu } from '~/components/sidebar/Menu.client';
 import type { ElementInfo } from '~/components/workbench/Inspector';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { StickToBottom, useStickToBottomContext } from '~/lib/hooks';
+import { useSpeechRecognition } from '~/lib/hooks/useSpeechRecognition';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import { expoUrlAtom } from '~/lib/stores/qrCodeStore';
 import type { DatabaseAlert, DeployAlert, LlmErrorAlertType } from '~/types/actions';
@@ -36,6 +36,16 @@ import { classNames } from '~/utils/classNames';
 import { PROVIDER_LIST } from '~/utils/constants';
 
 const TEXTAREA_MIN_HEIGHT = 76;
+
+function createModelRequestHeaders(apiKeys: Record<string, string> = {}) {
+  const headers = new Headers();
+
+  if (apiKeys && Object.keys(apiKeys).length > 0) {
+    headers.set('X-Api-Keys', encodeURIComponent(JSON.stringify(apiKeys)));
+  }
+
+  return headers;
+}
 
 interface BaseChatProps {
   textareaRef?: React.RefObject<HTMLTextAreaElement> | undefined;
@@ -137,12 +147,9 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
     ref,
   ) => {
     const TEXTAREA_MAX_HEIGHT = chatStarted ? 400 : 200;
-    const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromCookies());
+    const [apiKeys, setApiKeys] = useState<Record<string, string>>(getApiKeysFromStorage());
     const [modelList, setModelList] = useState<ModelInfo[]>([]);
     const [isModelSettingsCollapsed, setIsModelSettingsCollapsed] = useState(false);
-    const [isListening, setIsListening] = useState(false);
-    const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
-    const [transcript, setTranscript] = useState('');
     const [isModelLoading, setIsModelLoading] = useState<string | undefined>('all');
     const [progressAnnotations, setProgressAnnotations] = useState<ProgressAnnotation[]>([]);
     const expoUrl = useStore(expoUrlAtom);
@@ -162,60 +169,46 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
         setProgressAnnotations(progressList);
       }
     }, [data]);
-    useEffect(() => {
-      console.log(transcript);
-    }, [transcript]);
 
     useEffect(() => {
       onStreamingChange?.(isStreaming);
     }, [isStreaming, onStreamingChange]);
 
-    useEffect(() => {
-      if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
+    /*
+     * Stable transcript handler — converts raw speech text into a synthetic textarea event.
+     * Wrapped in useCallback so useSpeechRecognition's internal ref always holds a stable
+     * reference without triggering hook re-setup.
+     */
+    const handleSpeechTranscript = useCallback(
+      (transcript: string) => {
+        if (handleInputChange) {
+          const syntheticEvent = {
+            target: { value: transcript },
+          } as React.ChangeEvent<HTMLTextAreaElement>;
+          handleInputChange(syntheticEvent);
+        }
+      },
+      [handleInputChange],
+    );
 
-        recognition.onresult = (event) => {
-          const transcript = Array.from(event.results)
-            .map((result) => result[0])
-            .map((result) => result.transcript)
-            .join('');
-
-          setTranscript(transcript);
-
-          if (handleInputChange) {
-            const syntheticEvent = {
-              target: { value: transcript },
-            } as React.ChangeEvent<HTMLTextAreaElement>;
-            handleInputChange(syntheticEvent);
-          }
-        };
-
-        recognition.onerror = (event) => {
-          console.error('Speech recognition error:', event.error);
-          setIsListening(false);
-        };
-
-        setRecognition(recognition);
-      }
-    }, []);
+    const { isListening, recognitionRef, startListening, stopListening, abortListening } =
+      useSpeechRecognition(handleSpeechTranscript);
 
     useEffect(() => {
       if (typeof window !== 'undefined') {
         let parsedApiKeys: Record<string, string> | undefined = {};
 
         try {
-          parsedApiKeys = getApiKeysFromCookies();
+          parsedApiKeys = getApiKeysFromStorage();
           setApiKeys(parsedApiKeys);
         } catch (error) {
-          console.error('Error loading API keys from cookies:', error);
-          Cookies.remove('apiKeys');
+          console.error('Error loading API keys from storage:', error);
         }
 
         setIsModelLoading('all');
-        fetch('/api/models')
+        fetch('/api/models', {
+          headers: createModelRequestHeaders(parsedApiKeys),
+        })
           .then(async (response) => {
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -240,14 +233,16 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       async (providerName: string, apiKey: string) => {
         const newApiKeys = { ...apiKeys, [providerName]: apiKey };
         setApiKeys(newApiKeys);
-        Cookies.set('apiKeys', JSON.stringify(newApiKeys));
+        saveApiKeysToStorage(newApiKeys);
 
         setIsModelLoading(providerName);
 
         let providerModels: ModelInfo[] = [];
 
         try {
-          const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`);
+          const response = await fetch(`/api/models/${encodeURIComponent(providerName)}`, {
+            headers: createModelRequestHeaders(newApiKeys),
+          });
 
           if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -269,32 +264,16 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       [apiKeys],
     );
 
-    const startListening = useCallback(() => {
-      if (recognition) {
-        recognition.start();
-        setIsListening(true);
-      }
-    }, [recognition]);
-
-    const stopListening = useCallback(() => {
-      if (recognition) {
-        recognition.stop();
-        setIsListening(false);
-      }
-    }, [recognition]);
-
     const handleSendMessage = useCallback(
       (event: React.UIEvent, messageInput?: string) => {
         if (sendMessage) {
           sendMessage(event, messageInput);
           setSelectedElement?.(null);
 
-          if (recognition) {
-            recognition.abort(); // Stop current recognition
-            setTranscript(''); // Clear transcript
-            setIsListening(false);
+          if (recognitionRef.current) {
+            abortListening();
 
-            // Clear the input by triggering handleInputChange with empty value
+            // Clear the textarea value after aborting speech input
             if (handleInputChange) {
               const syntheticEvent = {
                 target: { value: '' },
@@ -304,7 +283,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           }
         }
       },
-      [sendMessage, setSelectedElement, recognition, handleInputChange],
+      [sendMessage, setSelectedElement, recognitionRef, abortListening, handleInputChange],
     );
 
     const handleFileUpload = useCallback(() => {

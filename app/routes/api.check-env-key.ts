@@ -1,5 +1,5 @@
 import type { LoaderFunction } from '@remix-run/cloudflare';
-import { getApiKeysFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest } from '~/lib/api/request-credentials';
 import { LLMManager } from '~/lib/modules/llm/manager';
 
 export const loader: LoaderFunction = async ({ context, request }) => {
@@ -19,9 +19,7 @@ export const loader: LoaderFunction = async ({ context, request }) => {
 
   const envVarName = providerInstance.config.apiTokenKey;
 
-  // Get API keys from cookie
-  const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = getApiKeysFromCookie(cookieHeader);
+  const apiKeys = getApiKeysFromRequest(request);
 
   /*
    * Check API key in order of precedence:

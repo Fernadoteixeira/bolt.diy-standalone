@@ -1,6 +1,6 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { streamText } from '~/lib/.server/llm/stream-text';
-import { getApiKeysFromCookie, getProviderSettingsFromCookie } from '~/lib/api/cookies';
+import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api/request-credentials';
 import type { ProviderInfo } from '~/types/model';
 import { createScopedLogger } from '~/utils/logger';
 import { stripIndents } from '~/utils/stripIndent';
@@ -12,12 +12,14 @@ export async function action(args: ActionFunctionArgs) {
 const logger = createScopedLogger('api.enhancher');
 
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
-  const { message, model, provider } = await request.json<{
-    message: string;
-    model: string;
-    provider: ProviderInfo;
-    apiKeys?: Record<string, string>;
-  }>();
+  const { message, model, provider, apiKeys: payloadApiKeys, providerSettings: payloadProviderSettings } =
+    await request.json<{
+      message: string;
+      model: string;
+      provider: ProviderInfo;
+      apiKeys?: Record<string, string>;
+      providerSettings?: Record<string, any>;
+    }>();
 
   const { name: providerName } = provider;
 
@@ -36,9 +38,8 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
     });
   }
 
-  const cookieHeader = request.headers.get('Cookie');
-  const apiKeys = getApiKeysFromCookie(cookieHeader);
-  const providerSettings = getProviderSettingsFromCookie(cookieHeader);
+  const apiKeys = getApiKeysFromRequest(request, { apiKeys: payloadApiKeys });
+  const providerSettings = getProviderSettingsFromRequest(request, { providerSettings: payloadProviderSettings });
 
   try {
     const result = await streamText({

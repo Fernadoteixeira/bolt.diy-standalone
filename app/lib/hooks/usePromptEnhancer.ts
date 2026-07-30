@@ -33,8 +33,15 @@ export function usePromptEnhancer() {
       requestBody.apiKeys = apiKeys;
     }
 
+    const headers = new Headers({ 'Content-Type': 'application/json' });
+
+    if (apiKeys && Object.keys(apiKeys).length > 0) {
+      headers.set('X-Api-Keys', encodeURIComponent(JSON.stringify(apiKeys)));
+    }
+
     const response = await fetch('/api/enhancer', {
       method: 'POST',
+      headers,
       body: JSON.stringify(requestBody),
     });
 
