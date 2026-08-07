@@ -136,7 +136,7 @@ export default function DatabaseTab() {
               </button>
               <button
                 type="button"
-                onClick={() => refresh().catch(() => {})}
+                onClick={() => refresh().catch((error) => console.error('Failed to refresh database status', error))}
                 className="px-4 py-2 rounded-md bg-bolt-elements-item-backgroundDefault text-bolt-elements-item-contentDefault"
               >
                 Refresh status

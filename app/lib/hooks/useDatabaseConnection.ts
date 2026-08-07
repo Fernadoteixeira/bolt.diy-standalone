@@ -13,7 +13,7 @@ export function useDatabaseConnection() {
   const refresh = useCallback(() => fetchDatabaseInfo(), []);
 
   useEffect(() => {
-    initializeDatabaseConnection().catch(() => {});
+    initializeDatabaseConnection().catch((error) => console.error('Failed to initialize database connection', error));
   }, []);
 
   return {

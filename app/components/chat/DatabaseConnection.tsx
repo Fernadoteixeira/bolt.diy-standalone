@@ -83,7 +83,9 @@ export function DatabaseConnection() {
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => refresh().catch(() => {})}
+                  onClick={() =>
+                    refresh().catch((error) => console.error('Failed to refresh database connection', error))
+                  }
                   className="px-4 py-2 rounded-md bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent"
                 >
                   Refresh
