@@ -23,11 +23,17 @@ const RATE_LIMITS = {
   // LLM API (more restrictive)
   '/api/llmcall': { windowMs: 60 * 1000, maxRequests: 10 }, // 10 requests per minute
 
-  // GitHub API endpoints
-  '/api/github-*': { windowMs: 60 * 1000, maxRequests: 30 }, // 30 requests per minute
+  // GitHub API endpoints (matches /api/github-stats, /api/github/user, etc.)
+  '/api/github*': { windowMs: 60 * 1000, maxRequests: 30 }, // 30 requests per minute
 
-  // Netlify API endpoints
-  '/api/netlify-*': { windowMs: 60 * 1000, maxRequests: 20 }, // 20 requests per minute
+  // Netlify API endpoints (matches /api/netlify-deploy, /api/netlify/user, etc.)
+  '/api/netlify*': { windowMs: 60 * 1000, maxRequests: 20 }, // 20 requests per minute
+
+  // Vercel API endpoints
+  '/api/vercel*': { windowMs: 60 * 1000, maxRequests: 20 }, // 20 requests per minute
+
+  // GitLab API endpoints
+  '/api/gitlab*': { windowMs: 60 * 1000, maxRequests: 30 }, // 30 requests per minute
 
   // General API endpoints
   '/api/*': { windowMs: 15 * 60 * 1000, maxRequests: 100 }, // 100 requests per 15 minutes
@@ -696,6 +702,20 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
         headers: responseHeaders,
       });
     } catch (error) {
+      // If the handler threw a Response (common Remix pattern for error responses),
+      // return it as-is with security headers added instead of converting to 500
+      if (error instanceof Response) {
+        const responseHeaders = new Headers(error.headers);
+        Object.entries(createSecurityHeaders()).forEach(([key, value]) => {
+          responseHeaders.set(key, value);
+        });
+        return new Response(error.body, {
+          status: error.status,
+          statusText: error.statusText,
+          headers: responseHeaders,
+        });
+      }
+
       console.error('Security-wrapped handler error:', error);
 
       const errorMessage = sanitizeErrorMessage(error, process.env.NODE_ENV === 'development');

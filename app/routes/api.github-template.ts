@@ -1,6 +1,7 @@
 import { json } from '@remix-run/cloudflare';
 import JSZip from 'jszip';
 import { resolveGitHubToken } from '~/lib/.server/github-token';
+import { withSecurity } from '~/lib/security';
 
 // Function to detect if we're running in Cloudflare
 function isCloudflareEnvironment(context: any): boolean {
@@ -204,7 +205,8 @@ async function fetchRepoContentsZip(repo: string, githubToken?: string) {
   return results.filter(Boolean);
 }
 
-export async function loader({ request, context }: { request: Request; context: any }) {
+export const loader = withSecurity(
+  async ({ request, context }: { request: Request; context: any }) => {
   const url = new URL(request.url);
   const repo = url.searchParams.get('repo');
 
@@ -240,4 +242,6 @@ export async function loader({ request, context }: { request: Request; context: 
       { status: 500 },
     );
   }
-}
+  },
+  { allowedMethods: ['GET'], requireAuth: true },
+);

@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMockRequest, createMockResponse } from '~/lib/testing/test-helpers';
+import { createMockRequest, createMockResponse, mockAuthHeaders } from '~/lib/testing/test-helpers';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import { loader } from '~/routes/api.models';
+
+const authHeaders = mockAuthHeaders('user');
 
 describe('api.models', () => {
   beforeEach(() => {
@@ -15,9 +17,9 @@ describe('api.models', () => {
   });
 
   it('returns a response with modelList, providers, and defaultProvider', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: {}, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: {}, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);
@@ -31,9 +33,9 @@ describe('api.models', () => {
   });
 
   it('returns a non-empty modelList containing static models from registered providers', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: {}, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: {}, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);
@@ -50,9 +52,9 @@ describe('api.models', () => {
   });
 
   it('returns providers with expected info fields', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: {}, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: {}, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);
@@ -65,9 +67,9 @@ describe('api.models', () => {
   });
 
   it('returns a defaultProvider with a name', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: {}, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: {}, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);

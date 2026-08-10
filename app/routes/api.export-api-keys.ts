@@ -1,8 +1,10 @@
 import type { LoaderFunction } from '@remix-run/cloudflare';
 import { getApiKeysFromRequest } from '~/lib/api/request-credentials';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { withSecurity } from '~/lib/security';
 
-export const loader: LoaderFunction = async ({ context, request }) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ context, request }) => {
   const apiKeysFromCookie = getApiKeysFromRequest(request);
 
   // Initialize the LLM manager to access environment variables
@@ -39,4 +41,6 @@ export const loader: LoaderFunction = async ({ context, request }) => {
   }
 
   return Response.json(apiKeys);
-};
+  },
+  { allowedMethods: ['GET'], roles: ['admin'] },
+);

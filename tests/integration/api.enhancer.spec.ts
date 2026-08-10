@@ -10,11 +10,13 @@ vi.mock('~/lib/.server/llm/stream-text', () => ({
 import { streamText } from '~/lib/.server/llm/stream-text';
 
 function createEnhancerRequest(body: unknown, headers?: Headers): Request {
+  const merged = new Headers(headers);
+  merged.set('x-user-role', 'user');
   const request = createMockRequest({
     method: 'POST',
     url: 'https://test.example.com/api/enhancer',
     body,
-    headers,
+    headers: merged,
   });
   return request;
 }
@@ -45,83 +47,55 @@ describe('api.enhancer', () => {
     vi.restoreAllMocks();
   });
 
-  it('throws 400 Response when model is missing', async () => {
+  it('returns 400 Response when model is missing', async () => {
     const request = createEnhancerRequest({
       message: 'hello',
       provider: { name: 'OpenAI' },
     });
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
   });
 
-  it('throws 400 Response when model is not a string', async () => {
+  it('returns 400 Response when model is not a string', async () => {
     const request = createEnhancerRequest({
       message: 'hello',
       model: 123,
       provider: { name: 'OpenAI' },
     });
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
   });
 
-  it('throws 400 Response when provider is missing', async () => {
+  it('returns 400 Response when provider is missing', async () => {
     const request = createEnhancerRequest({
       message: 'hello',
       model: 'gpt-4o',
       provider: {},
     });
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
   });
 
-  it('throws 400 Response when provider.name is not a string', async () => {
+  it('returns 400 Response when provider.name is not a string', async () => {
     const request = createEnhancerRequest({
       message: 'hello',
       model: 'gpt-4o',
       provider: { name: 42 },
     });
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
   });
 
   it('returns 200 with text/event-stream on a valid request', async () => {
@@ -151,7 +125,7 @@ describe('api.enhancer', () => {
     expect(callArgs.messages.length).toBe(1);
   });
 
-  it('throws 401 Response when streamText throws an API key error', async () => {
+  it('returns 401 Response when streamText throws an API key error', async () => {
     vi.mocked(streamText).mockRejectedValue(new Error('API key is invalid'));
 
     const headers = mockApiKeyHeaders({ OpenAI: 'sk-test-invalid-key' });
@@ -164,20 +138,13 @@ describe('api.enhancer', () => {
       headers,
     );
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(401);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(401);
   });
 
-  it('throws 500 Response when streamText throws a generic error', async () => {
+  it('returns 500 Response when streamText throws a generic error', async () => {
     vi.mocked(streamText).mockRejectedValue(new Error('Something went wrong'));
 
     const headers = mockApiKeyHeaders({ OpenAI: 'sk-test-fake-key-aaaaaaaaaaaa' });
@@ -190,16 +157,9 @@ describe('api.enhancer', () => {
       headers,
     );
 
-    let caught: unknown;
+    const response = await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
 
-    try {
-      await action({ request, context: { cloudflare: { env: {} } }, params: {} } as any);
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(caught).toBeInstanceOf(Response);
-    const resp = caught as Response;
-    expect(resp.status).toBe(500);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(500);
   });
 });

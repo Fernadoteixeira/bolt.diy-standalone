@@ -1,5 +1,6 @@
 import { json } from '@remix-run/cloudflare';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 // Allowed headers to forward to the target server
 const ALLOW_HEADERS = [
@@ -43,13 +44,19 @@ const EXPOSE_HEADERS = [
 ];
 
 // Handle all HTTP methods
-export async function action({ request, params }: ActionFunctionArgs) {
+export const action = withSecurity(
+  async ({ request, params }: ActionFunctionArgs) => {
   return handleProxyRequest(request, params['*']);
-}
+  },
+  { allowedMethods: ['POST', 'OPTIONS'] },
+);
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
+export const loader = withSecurity(
+  async ({ request, params }: LoaderFunctionArgs) => {
   return handleProxyRequest(request, params['*']);
-}
+  },
+  { allowedMethods: ['GET', 'OPTIONS'] },
+);
 
 async function handleProxyRequest(request: Request, path: string | undefined) {
   try {

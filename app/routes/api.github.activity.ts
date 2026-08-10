@@ -1,7 +1,9 @@
 import { json, type LoaderFunction, type LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { resolveGitHubToken } from '~/lib/.server/github-token';
+import { withSecurity } from '~/lib/security';
 
-export const loader: LoaderFunction = async ({ request, context }: LoaderFunctionArgs) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ request, context }: LoaderFunctionArgs) => {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -79,4 +81,6 @@ export const loader: LoaderFunction = async ({ request, context }: LoaderFunctio
       },
     );
   }
-};
+  },
+  { allowedMethods: ['GET', 'OPTIONS'], requireAuth: true },
+);

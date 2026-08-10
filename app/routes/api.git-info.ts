@@ -1,4 +1,5 @@
 import { json } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 let execSync: ((cmd: string, opts: any) => string) | null = null;
 let existsSync: ((path: string) => boolean) | null = null;
@@ -19,7 +20,8 @@ try {
   existsSync = null;
 }
 
-export async function loader() {
+export const loader = withSecurity(
+  async () => {
   try {
     // Check if we're in a git repository (only in Node.js environments)
     if (!execSync || !existsSync || !existsSync('.git')) {
@@ -83,4 +85,6 @@ export async function loader() {
       { status: 500 },
     );
   }
-}
+  },
+  { allowedMethods: ['GET'], roles: ['operator', 'admin'], permissions: ['read:diagnostics'] },
+);

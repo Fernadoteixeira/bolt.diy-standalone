@@ -3,6 +3,7 @@ import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api
 import { LLMManager } from '~/lib/modules/llm/manager';
 import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { ProviderInfo } from '~/types/model';
+import { withSecurity } from '~/lib/security';
 
 interface ModelsResponse {
   modelList: ModelInfo[];
@@ -36,19 +37,20 @@ function getProviderInfo(llmManager: LLMManager) {
   return { providers: cachedProviders, defaultProvider: defaultProviderInfo };
 }
 
-export async function loader({
-  request,
-  params,
-  context,
-}: {
-  request: Request;
-  params: { provider?: string };
-  context: {
-    cloudflare?: {
-      env: Record<string, string>;
+export const loader = withSecurity(
+  async ({
+    request,
+    params,
+    context,
+  }: {
+    request: Request;
+    params: { provider?: string };
+    context: {
+      cloudflare?: {
+        env: any;
+      };
     };
-  };
-}): Promise<Response> {
+  }): Promise<Response> => {
   const llmManager = LLMManager.getInstance(context.cloudflare?.env);
   const apiKeys = getApiKeysFromRequest(request);
   const providerSettings = getProviderSettingsFromRequest(request);
@@ -79,4 +81,6 @@ export async function loader({
     providers,
     defaultProvider,
   });
-}
+  },
+  { allowedMethods: ['GET'], requireAuth: true },
+);

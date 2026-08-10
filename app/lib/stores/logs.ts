@@ -291,7 +291,7 @@ class LogStore {
       const matchesSearch =
         !searchQuery ||
         log.message.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        JSON.stringify(log.details).toLowerCase().includes(searchQuery.toLowerCase());
+        (log.details != null && JSON.stringify(log.details).toLowerCase().includes(searchQuery.toLowerCase()));
 
       return matchesLevel && matchesCategory && matchesSearch;
     });

@@ -8,10 +8,14 @@ import type { ModelInfo } from '~/lib/modules/llm/types';
 import type { IProviderSetting, ProviderInfo } from '~/types/model';
 import { PROVIDER_LIST } from '~/utils/constants';
 import { createScopedLogger } from '~/utils/logger';
+import { withSecurity } from '~/lib/security';
 
-export async function action(args: ActionFunctionArgs) {
+export const action = withSecurity(
+  async (args: ActionFunctionArgs) => {
   return llmCallAction(args);
-}
+  },
+  { allowedMethods: ['POST'], requireAuth: true },
+);
 
 async function getModelList(options: {
   apiKeys?: Record<string, string>;

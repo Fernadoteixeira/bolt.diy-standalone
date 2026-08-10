@@ -1,4 +1,5 @@
 import { json, type LoaderFunction, type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 interface GitInfo {
   local: {
@@ -22,7 +23,8 @@ declare const __GIT_EMAIL: string;
 declare const __GIT_REMOTE_URL: string;
 declare const __GIT_REPO_NAME: string;
 
-export const loader: LoaderFunction = async ({ request }: LoaderFunctionArgs) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ request }: LoaderFunctionArgs) => {
   // Handle CORS preflight requests
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -53,4 +55,6 @@ export const loader: LoaderFunction = async ({ request }: LoaderFunctionArgs) =>
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     },
   });
-};
+  },
+  { allowedMethods: ['GET', 'OPTIONS'], roles: ['operator', 'admin'], permissions: ['read:diagnostics'] },
+);

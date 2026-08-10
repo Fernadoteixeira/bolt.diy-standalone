@@ -108,15 +108,13 @@ describe('Locked Files Persistence', () => {
       expect(items[0].isFolder).toBe(true);
     });
 
-    it('addLockedFolder adds item with isFolder: false (known source behaviour)', async () => {
+    it('addLockedFolder adds item with isFolder: true', async () => {
       const mod = await importLockedFiles();
       mod.addLockedFolder('chat-1', 'src/utils');
 
       const items = mod.getLockedItemsForChat('chat-1');
       expect(items).toHaveLength(1);
-      // addLockedFolder calls addLockedItem without the isFolder arg,
-      // so it defaults to false. This documents the actual behaviour.
-      expect(items[0].isFolder).toBe(false);
+      expect(items[0].isFolder).toBe(true);
     });
 
     it('should not duplicate an already-locked path', async () => {

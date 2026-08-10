@@ -1,5 +1,6 @@
 import { type ActionFunctionArgs, type LoaderFunctionArgs, json } from '@remix-run/cloudflare';
 import type { VercelProjectInfo } from '~/types/vercel';
+import { withSecurity } from '~/lib/security';
 
 // Function to detect framework from project files
 const detectFramework = (files: Record<string, string>): string => {
@@ -173,7 +174,8 @@ const detectFramework = (files: Record<string, string>): string => {
 };
 
 // Add loader function to handle GET requests
-export async function loader({ request }: LoaderFunctionArgs) {
+export const loader = withSecurity(
+  async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const projectId = url.searchParams.get('projectId');
   const token = url.searchParams.get('token');
@@ -229,7 +231,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error('Error fetching Vercel deployment:', error);
     return json({ error: 'Failed to fetch deployment' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['GET'], roles: ['operator', 'admin'] },
+);
 
 interface DeployRequestBody {
   projectId?: string;
@@ -240,7 +244,8 @@ interface DeployRequestBody {
 }
 
 // Existing action function for POST requests
-export async function action({ request }: ActionFunctionArgs) {
+export const action = withSecurity(
+  async ({ request }: ActionFunctionArgs) => {
   try {
     const { projectId, files, sourceFiles, token, chatId, framework } = (await request.json()) as DeployRequestBody & {
       token: string;
@@ -487,4 +492,6 @@ export async function action({ request }: ActionFunctionArgs) {
     console.error('Vercel deploy error:', error);
     return json({ error: 'Deployment failed' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['POST'], roles: ['operator', 'admin'] },
+);

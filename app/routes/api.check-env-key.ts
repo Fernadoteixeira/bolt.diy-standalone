@@ -1,8 +1,10 @@
 import type { LoaderFunction } from '@remix-run/cloudflare';
 import { getApiKeysFromRequest } from '~/lib/api/request-credentials';
 import { LLMManager } from '~/lib/modules/llm/manager';
+import { withSecurity } from '~/lib/security';
 
-export const loader: LoaderFunction = async ({ context, request }) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ context, request }) => {
   const url = new URL(request.url);
   const provider = url.searchParams.get('provider');
 
@@ -36,4 +38,6 @@ export const loader: LoaderFunction = async ({ context, request }) => {
   );
 
   return Response.json({ isSet });
-};
+  },
+  { allowedMethods: ['GET'], requireAuth: true },
+);

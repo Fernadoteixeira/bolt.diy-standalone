@@ -1,4 +1,5 @@
 import { type LoaderFunctionArgs } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -13,7 +14,8 @@ function tileToLatitude(y: number, z: number) {
   return (180 / Math.PI) * Math.atan(Math.sinh(n));
 }
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export const loader = withSecurity(
+  async ({ params }: LoaderFunctionArgs) => {
   const z = clamp(Number(params.z || 0), 0, 8);
   const maxIndex = 2 ** z - 1;
   const x = clamp(Number(params.x || 0), 0, Math.max(maxIndex, 0));
@@ -56,4 +58,6 @@ export async function loader({ params }: LoaderFunctionArgs) {
       'Cache-Control': 'public, max-age=3600',
     },
   });
-}
+  },
+  { allowedMethods: ['GET'] },
+);

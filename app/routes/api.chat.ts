@@ -16,10 +16,14 @@ import type { DesignScheme } from '~/types/design-scheme';
 import type { IProviderSetting } from '~/types/model';
 import { WORK_DIR } from '~/utils/constants';
 import { createScopedLogger } from '~/utils/logger';
+import { withSecurity } from '~/lib/security';
 
-export async function action(args: ActionFunctionArgs) {
+export const action = withSecurity(
+  async (args: ActionFunctionArgs) => {
   return chatAction(args);
-}
+  },
+  { allowedMethods: ['POST'], requireAuth: true },
+);
 
 const logger = createScopedLogger('api.chat');
 

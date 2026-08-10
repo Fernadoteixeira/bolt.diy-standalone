@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMockRequest, createMockResponse } from '~/lib/testing/test-helpers';
+import { createMockRequest, createMockResponse, mockAuthHeaders } from '~/lib/testing/test-helpers';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import { loader } from '~/routes/api.models.$provider';
+
+const authHeaders = mockAuthHeaders('user');
 
 describe('api.models.$provider', () => {
   beforeEach(() => {
@@ -15,9 +17,9 @@ describe('api.models.$provider', () => {
   });
 
   it('returns an empty modelList when no provider param is given', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: {}, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: {}, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);
@@ -28,9 +30,9 @@ describe('api.models.$provider', () => {
   });
 
   it('returns 404 when the provider is not found', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models/Unknown' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models/Unknown', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: { provider: 'Unknown' }, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: { provider: 'Unknown' }, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(404);
@@ -38,9 +40,9 @@ describe('api.models.$provider', () => {
   });
 
   it('returns models for a known provider (OpenAI)', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models/OpenAI' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models/OpenAI', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: { provider: 'OpenAI' }, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: { provider: 'OpenAI' }, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);
@@ -58,9 +60,9 @@ describe('api.models.$provider', () => {
   });
 
   it('returns models that include static models for the specified provider', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/models/Anthropic' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/models/Anthropic', headers: authHeaders });
     const response = await createMockResponse(
-      loader({ request, params: { provider: 'Anthropic' }, context: { cloudflare: { env: {} } } }),
+      loader({ request, params: { provider: 'Anthropic' }, context: { cloudflare: { env: {} } } } as any),
     );
 
     expect(response.status).toBe(200);

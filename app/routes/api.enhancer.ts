@@ -4,10 +4,14 @@ import { getApiKeysFromRequest, getProviderSettingsFromRequest } from '~/lib/api
 import type { ProviderInfo } from '~/types/model';
 import { createScopedLogger } from '~/utils/logger';
 import { stripIndents } from '~/utils/stripIndent';
+import { withSecurity } from '~/lib/security';
 
-export async function action(args: ActionFunctionArgs) {
+export const action = withSecurity(
+  async (args: ActionFunctionArgs) => {
   return enhancerAction(args);
-}
+  },
+  { allowedMethods: ['POST'], requireAuth: true },
+);
 
 const logger = createScopedLogger('api.enhancher');
 

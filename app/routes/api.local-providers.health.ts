@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
 import { checkProviderAvailability } from '~/lib/services/local-provider-discovery';
+import { withSecurity } from '~/lib/security';
 
 /**
  * API endpoint for checking provider health
@@ -9,7 +10,8 @@ import { checkProviderAvailability } from '~/lib/services/local-provider-discove
  * Body: { baseUrl: string }
  * Returns health status of specified provider
  */
-export async function action({ request }: ActionFunctionArgs) {
+export const action = withSecurity(
+  async ({ request }: ActionFunctionArgs) => {
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
@@ -34,14 +36,17 @@ export async function action({ request }: ActionFunctionArgs) {
     console.error('Error checking provider health:', error);
     return json({ error: 'Failed to check provider health' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['POST'], roles: ['operator', 'admin'] },
+);
 
 /**
  * GET endpoint for quick health check
  *
  * GET /api/local-providers/health?baseUrl=http://127.0.0.1:11434
  */
-export async function loader({ request }: LoaderFunctionArgs) {
+export const loader = withSecurity(
+  async ({ request }: LoaderFunctionArgs) => {
   const url = new URL(request.url);
   const baseUrl = url.searchParams.get('baseUrl');
 
@@ -62,4 +67,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
     console.error('Error checking provider health:', error);
     return json({ error: 'Failed to check provider health' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['GET'], roles: ['operator', 'admin'] },
+);

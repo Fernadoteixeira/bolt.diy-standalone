@@ -172,7 +172,7 @@ export function addLockedFile(chatId: string, filePath: string): void {
  * Add a folder to the locked items list
  */
 export function addLockedFolder(chatId: string, folderPath: string): void {
-  addLockedItem(chatId, folderPath);
+  addLockedItem(chatId, folderPath, true);
 }
 
 /**

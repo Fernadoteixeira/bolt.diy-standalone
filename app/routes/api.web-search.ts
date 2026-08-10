@@ -1,6 +1,7 @@
 import { json } from '@remix-run/cloudflare';
 import type { ActionFunctionArgs } from '@remix-run/cloudflare';
 import { isAllowedUrl } from '~/utils/url';
+import { withSecurity } from '~/lib/security';
 
 const MAX_CONTENT_LENGTH = 8000;
 
@@ -47,7 +48,8 @@ function extractTextContent(html: string): string {
     .trim();
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export const action = withSecurity(
+  async ({ request }: ActionFunctionArgs) => {
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
@@ -101,4 +103,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
     return json({ error: error instanceof Error ? error.message : 'Failed to fetch URL' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['POST'], requireAuth: true },
+);

@@ -1,6 +1,8 @@
 import { json, type ActionFunction } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
-export const action: ActionFunction = async ({ request }) => {
+export const action: ActionFunction = withSecurity(
+  async ({ request }) => {
   if (request.method !== 'POST') {
     return json({ error: 'Method not allowed' }, { status: 405 });
   }
@@ -18,4 +20,6 @@ export const action: ActionFunction = async ({ request }) => {
     },
     { status: 400 },
   );
-};
+  },
+  { allowedMethods: ['POST'], roles: ['admin'] },
+);

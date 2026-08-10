@@ -1,9 +1,11 @@
 import { MCPService } from '~/lib/services/mcpService';
 import { createScopedLogger } from '~/utils/logger';
+import { withSecurity } from '~/lib/security';
 
 const logger = createScopedLogger('api.mcp-check');
 
-export async function loader() {
+export const loader = withSecurity(
+  async () => {
   try {
     const mcpService = MCPService.getInstance();
     const serverTools = await mcpService.checkServersAvailabilities();
@@ -13,4 +15,6 @@ export async function loader() {
     logger.error('Error checking MCP servers:', error);
     return Response.json({ error: 'Failed to check MCP servers' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['GET'], roles: ['operator', 'admin'], permissions: ['read:diagnostics'] },
+);

@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createMockRequest, createMockResponse, mockApiKeyHeaders } from '~/lib/testing/test-helpers';
+import { createMockRequest, createMockResponse, mockApiKeyHeaders, mockAuthHeaders } from '~/lib/testing/test-helpers';
 import { LLMManager } from '~/lib/modules/llm/manager';
 import { loader } from '~/routes/api.export-api-keys';
+
+const adminHeaders = mockAuthHeaders('admin');
 
 describe('api.export-api-keys', () => {
   beforeEach(() => {
@@ -15,7 +17,7 @@ describe('api.export-api-keys', () => {
   });
 
   it('returns an empty object when no API keys are set anywhere', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys', headers: adminHeaders });
     const response = await createMockResponse(
       loader({ request, context: { cloudflare: { env: {} } }, params: {} } as any) as unknown as Response,
     );
@@ -26,6 +28,7 @@ describe('api.export-api-keys', () => {
 
   it('returns API keys from the request header', async () => {
     const headers = mockApiKeyHeaders({ OpenAI: 'sk-test-header-key-aaaaaaaaaaaa' });
+    headers.set('x-user-role', 'admin');
     const request = createMockRequest({
       url: 'https://test.example.com/api/export-api-keys',
       headers,
@@ -39,7 +42,7 @@ describe('api.export-api-keys', () => {
   });
 
   it('returns API keys from the Cloudflare env', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys', headers: adminHeaders });
     const response = await createMockResponse(
       loader({
         request,
@@ -54,6 +57,7 @@ describe('api.export-api-keys', () => {
 
   it('merges API keys from request header and env (header takes precedence)', async () => {
     const headers = mockApiKeyHeaders({ OpenAI: 'sk-test-header-key-aaaaaaaaaaaa' });
+    headers.set('x-user-role', 'admin');
     const request = createMockRequest({
       url: 'https://test.example.com/api/export-api-keys',
       headers,
@@ -74,7 +78,7 @@ describe('api.export-api-keys', () => {
   });
 
   it('returns multiple env keys for different providers', async () => {
-    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys' });
+    const request = createMockRequest({ url: 'https://test.example.com/api/export-api-keys', headers: adminHeaders });
     const response = await createMockResponse(
       loader({
         request,

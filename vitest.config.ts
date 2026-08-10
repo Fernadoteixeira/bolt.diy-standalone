@@ -35,13 +35,13 @@ export default defineConfig({
         'scripts/**',
       ],
       thresholds: {
-        // Conservative starting thresholds — set just below current coverage
-        // so CI passes on day one. Raise these incrementally as tests are added.
-        // Target: 10% statements, 15% branches, 10% functions, 10% lines.
-        statements: 7,
-        branches: 15,
-        functions: 10,
-        lines: 7,
+        // Raised thresholds reflecting expanded test coverage.
+        // Current: ~10.5% stmt, ~70% branch, ~38% fn, ~10.5% line.
+        // Target: 15% stmt, 70% branch, 40% fn, 15% line.
+        statements: 10,
+        branches: 60,
+        functions: 35,
+        lines: 10,
       },
     },
   },

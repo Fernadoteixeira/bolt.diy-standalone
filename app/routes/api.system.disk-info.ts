@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunction } from '@remix-run/cloudflare';
 import { json } from '@remix-run/cloudflare';
+import { withSecurity } from '~/lib/security';
 
 let execSync: ((cmd: string, opts: any) => string) | null = null;
 
@@ -284,7 +285,8 @@ const getDiskInfo = (): DiskInfo[] => {
   }
 };
 
-export const loader: LoaderFunction = async ({ request: _request }) => {
+export const loader: LoaderFunction = withSecurity(
+  async ({ request: _request }) => {
   try {
     return json(getDiskInfo());
   } catch (error) {
@@ -305,9 +307,12 @@ export const loader: LoaderFunction = async ({ request: _request }) => {
       { status: 500 },
     );
   }
-};
+  },
+  { allowedMethods: ['GET'], roles: ['operator', 'admin'], permissions: ['read:diagnostics'] },
+);
 
-export const action = async ({ request: _request }: ActionFunctionArgs) => {
+export const action = withSecurity(
+  async ({ request: _request }: ActionFunctionArgs) => {
   try {
     return json(getDiskInfo());
   } catch (error) {
@@ -328,4 +333,6 @@ export const action = async ({ request: _request }: ActionFunctionArgs) => {
       { status: 500 },
     );
   }
-};
+  },
+  { allowedMethods: ['POST'], roles: ['operator', 'admin'], permissions: ['read:diagnostics'] },
+);

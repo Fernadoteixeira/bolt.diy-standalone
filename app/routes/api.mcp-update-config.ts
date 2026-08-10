@@ -1,10 +1,12 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { MCPService, type MCPConfig } from '~/lib/services/mcpService';
 import { createScopedLogger } from '~/utils/logger';
+import { withSecurity } from '~/lib/security';
 
 const logger = createScopedLogger('api.mcp-update-config');
 
-export async function action({ request }: ActionFunctionArgs) {
+export const action = withSecurity(
+  async ({ request }: ActionFunctionArgs) => {
   try {
     const mcpConfig = (await request.json()) as MCPConfig;
 
@@ -20,4 +22,6 @@ export async function action({ request }: ActionFunctionArgs) {
     logger.error('Error updating MCP config:', error);
     return Response.json({ error: 'Failed to update MCP config' }, { status: 500 });
   }
-}
+  },
+  { allowedMethods: ['POST'], roles: ['admin'] },
+);
