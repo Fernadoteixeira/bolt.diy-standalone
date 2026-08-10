@@ -396,6 +396,61 @@ This method is recommended for developers who want to:
    cd bolt.diy
    ```
 
+---
+
+## Security & Testing
+
+bolt.diy-standalone includes a 360° hardening layer covering provider secret
+handling, role-based access control, CSRF protection, audit logging, rate limiting,
+and a full CI quality-gate pipeline. Full documentation lives in [`docs/`](./docs).
+
+### Documentation index
+
+| Document | What it covers |
+|----------|----------------|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Tech stack, project structure, request/data flow, security architecture, test architecture |
+| [docs/SECURITY.md](./docs/SECURITY.md) | Provider secrets, RBAC, CSRF, audit logging, rate limiting, security headers, secret rotation, adding secured routes |
+| [docs/ONBOARDING.md](./docs/ONBOARDING.md) | Setup, running tests, linting/type checking, CI overview, adding providers/routes/tests |
+| [docs/RUNBOOK.md](./docs/RUNBOOK.md) | Incident response, rate-limit tuning, audit-log queries, CSRF lifecycle, coverage thresholds, CI troubleshooting |
+
+### Quick commands
+
+```bash
+pnpm run dev               # start the dev server (http://localhost:5173)
+pnpm run test              # run unit + integration tests (Vitest)
+pnpm run test:coverage     # run tests with coverage + enforce thresholds
+pnpm run test:e2e          # run Playwright e2e tests
+pnpm run typecheck         # tsc --noEmit (strict)
+pnpm run lint              # ESLint over app/ (CI enforces zero warnings)
+pnpm run security:check    # hardcoded-secret scan + security module integrity
+```
+
+### Security highlights
+
+- **Provider secrets** are stored in browser `sessionStorage` and sent to the server via
+  `X-Api-Keys` / `X-Provider-Settings` headers — **never** in cookies (legacy cookies are
+  migrated and cleared on first load). See `app/lib/api/api-key-storage.ts` and
+  `app/lib/api/request-credentials.ts`.
+- **RBAC** with `user` / `operator` / `admin` roles and a permission matrix, enforced via
+  the `withSecurity()` route wrapper. See `app/lib/security.ts`.
+- **CSRF** tokens (32-byte random, 1-hour TTL, constant-time validation) via the
+  `x-csrf-token` header.
+- **Audit logging** (in-memory ring buffer) records `access_granted`, `access_denied`,
+  `csrf_failed`, and `rate_limited` events.
+- **Rate limiting** per endpoint + client IP, with exact-match-over-wildcard rules.
+- **Security headers** (CSP, HSTS in prod, X-Frame-Options, etc.) injected on every
+  `withSecurity`-wrapped response.
+
+### CI pipeline
+
+`.github/workflows/quality-gates.yml` runs a two-wave pipeline on every push to `main`
+and every PR: typecheck + lint + security-audit (parallel), then test + coverage + build.
+See [docs/ONBOARDING.md](./docs/ONBOARDING.md#ci-pipeline-overview) for details.
+
+   ```bash
+   cd bolt.diy
+   ```
+
 3. **Install Dependencies**:
 
    ```bash

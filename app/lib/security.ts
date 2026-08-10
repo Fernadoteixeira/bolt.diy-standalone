@@ -1,3 +1,4 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from '@remix-run/cloudflare';
 
 export type UserRole = 'user' | 'operator' | 'admin';
@@ -19,9 +20,6 @@ const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 // Rate limit configuration
 const RATE_LIMITS = {
-  // General API endpoints
-  '/api/*': { windowMs: 15 * 60 * 1000, maxRequests: 100 }, // 100 requests per 15 minutes
-
   // LLM API (more restrictive)
   '/api/llmcall': { windowMs: 60 * 1000, maxRequests: 10 }, // 10 requests per minute
 
@@ -30,7 +28,15 @@ const RATE_LIMITS = {
 
   // Netlify API endpoints
   '/api/netlify-*': { windowMs: 60 * 1000, maxRequests: 20 }, // 20 requests per minute
+
+  // General API endpoints
+  '/api/*': { windowMs: 15 * 60 * 1000, maxRequests: 100 }, // 100 requests per 15 minutes
 };
+
+/** Clear all rate limit entries (useful for testing). */
+export function clearRateLimits(): void {
+  rateLimitStore.clear();
+}
 
 /**
  * Rate limiting middleware
@@ -39,15 +45,19 @@ export function checkRateLimit(request: Request, endpoint: string): { allowed: b
   const clientIP = getClientIP(request);
   const key = `${clientIP}:${endpoint}`;
 
-  // Find matching rate limit rule
-  const rule = Object.entries(RATE_LIMITS).find(([pattern]) => {
-    if (pattern.endsWith('/*')) {
-      const basePattern = pattern.slice(0, -2);
-      return endpoint.startsWith(basePattern);
+  // Find matching rate limit rule: prefer exact matches first, then wildcard matches
+  const exactRule = Object.entries(RATE_LIMITS).find(([pattern]) => pattern === endpoint);
+
+  const wildcardRule = Object.entries(RATE_LIMITS).find(([pattern]) => {
+    if (pattern.endsWith('*')) {
+      const prefix = pattern.slice(0, -1);
+      return endpoint.startsWith(prefix);
     }
 
-    return endpoint === pattern;
+    return false;
   });
+
+  const rule = exactRule || wildcardRule;
 
   if (!rule) {
     return { allowed: true }; // No rate limit for this endpoint
@@ -245,6 +255,297 @@ export function authorizeRequest(
   return { allowed: true, access };
 }
 
+/*
+ * ---------------------------------------------------------------------------
+ * CSRF Token Protection
+ * ---------------------------------------------------------------------------
+ */
+
+/** CSRF token TTL in milliseconds (1 hour). */
+const CSRF_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+/** In-memory store of issued CSRF tokens with expiry. */
+const csrfTokenStore = new Map<string, { token: string; expiresAt: number }>();
+
+/**
+ * Generate a cryptographically random CSRF token.
+ * Returns a hex-encoded string suitable for use in headers.
+ */
+export function generateCsrfToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+/**
+ * Issue a new CSRF token: generate, store with TTL, and return it.
+ * The client should send this token back via the `x-csrf-token` header.
+ */
+export function issueCsrfToken(): string {
+  purgeExpiredCsrfTokens();
+
+  const token = generateCsrfToken();
+  csrfTokenStore.set(token, { token, expiresAt: Date.now() + CSRF_TOKEN_TTL_MS });
+
+  return token;
+}
+
+/**
+ * Validate a CSRF token from the request against an expected token using
+ * constant-time comparison to prevent timing attacks.
+ *
+ * Reads the token from the `x-csrf-token` header on the request.
+ * Returns `true` only when the header is present and matches the expected token.
+ */
+export function validateCsrfToken(request: Request, expectedToken: string): boolean {
+  const headerToken = request.headers.get('x-csrf-token');
+
+  if (!headerToken || !expectedToken) {
+    return false;
+  }
+
+  return constantTimeCompare(headerToken, expectedToken);
+}
+
+/**
+ * Validate a CSRF token from the request against the in-memory token store.
+ * Used internally by the `withSecurity` wrapper when `csrf: true` is set.
+ */
+function validateCsrfTokenFromStore(request: Request): boolean {
+  purgeExpiredCsrfTokens();
+
+  const headerToken = request.headers.get('x-csrf-token');
+
+  if (!headerToken) {
+    return false;
+  }
+
+  const entry = csrfTokenStore.get(headerToken);
+
+  if (!entry || entry.expiresAt < Date.now()) {
+    return false;
+  }
+
+  return validateCsrfToken(request, entry.token);
+}
+
+/** Remove expired CSRF tokens from the store. */
+function purgeExpiredCsrfTokens(): void {
+  const now = Date.now();
+
+  for (const [key, entry] of csrfTokenStore.entries()) {
+    if (entry.expiresAt < now) {
+      csrfTokenStore.delete(key);
+    }
+  }
+}
+
+/**
+ * Constant-time string comparison to mitigate timing attacks.
+ * Returns `false` immediately (but safely) when lengths differ.
+ */
+function constantTimeCompare(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf8');
+  const bufB = Buffer.from(b, 'utf8');
+
+  if (bufA.length !== bufB.length) {
+    return false;
+  }
+
+  return timingSafeEqual(bufA, bufB);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Audit Logging
+ * ---------------------------------------------------------------------------
+ */
+
+/** Maximum number of audit entries retained in the in-memory buffer. */
+const AUDIT_LOG_MAX_SIZE = 1000;
+
+export interface AuditEvent {
+  timestamp: number;
+  action: string;
+  userId: string;
+  role: UserRole | 'unknown';
+  path: string;
+  method: string;
+  details?: Record<string, unknown>;
+}
+
+export interface AuditLogQuery {
+  action?: string;
+  userId?: string;
+  since?: number;
+  until?: number;
+}
+
+/** In-memory rotating audit log buffer. */
+const auditLog: AuditEvent[] = [];
+
+/**
+ * Record a structured audit event. Missing fields are filled with sensible
+ * defaults. The buffer is capped at `AUDIT_LOG_MAX_SIZE` entries (oldest
+ * entries are dropped when the cap is reached).
+ *
+ * @param event - Partial audit event; `timestamp` defaults to now.
+ * @param level - Optional log level for console emission ('debug' | 'warn').
+ */
+export function logAuditEvent(event: Partial<AuditEvent>, level: 'debug' | 'warn' = 'debug'): AuditEvent {
+  const entry: AuditEvent = {
+    timestamp: event.timestamp ?? Date.now(),
+    action: event.action ?? 'unknown',
+    userId: event.userId ?? 'anonymous',
+    role: event.role ?? 'unknown',
+    path: event.path ?? '',
+    method: event.method ?? '',
+    details: event.details,
+  };
+
+  auditLog.push(entry);
+
+  // Rotate: drop oldest entries when exceeding max size
+  while (auditLog.length > AUDIT_LOG_MAX_SIZE) {
+    auditLog.shift();
+  }
+
+  if (level === 'warn') {
+    console.warn(`[audit] ${entry.action} — ${entry.method} ${entry.path} user=${entry.userId} role=${entry.role}`);
+  } else {
+    console.debug(`[audit] ${entry.action} — ${entry.method} ${entry.path} user=${entry.userId} role=${entry.role}`);
+  }
+
+  return entry;
+}
+
+/**
+ * Retrieve audit log entries with optional filtering.
+ *
+ * @param options - Optional filters: `action`, `userId`, `since` (timestamp),
+ *                  `until` (timestamp).
+ * @returns Array of matching `AuditEvent` entries (oldest first).
+ */
+export function getAuditLog(options?: AuditLogQuery): AuditEvent[] {
+  if (!options) {
+    return [...auditLog];
+  }
+
+  return auditLog.filter((entry) => {
+    if (options.action !== undefined && entry.action !== options.action) {
+      return false;
+    }
+
+    if (options.userId !== undefined && entry.userId !== options.userId) {
+      return false;
+    }
+
+    if (options.since !== undefined && entry.timestamp < options.since) {
+      return false;
+    }
+
+    if (options.until !== undefined && entry.timestamp > options.until) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+/** Clear all audit log entries. */
+export function clearAuditLog(): void {
+  auditLog.length = 0;
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Secret Rotation Helpers
+ * ---------------------------------------------------------------------------
+ */
+
+export interface SecretStrengthResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export interface SecretRotationResult {
+  success: boolean;
+  errors: string[];
+  oldSecretValid: boolean;
+}
+
+/**
+ * Validate that a secret meets minimum strength requirements:
+ * - At least 32 characters
+ * - Contains at least one uppercase letter
+ * - Contains at least one lowercase letter
+ * - Contains at least one digit
+ * - Contains at least one special character
+ */
+export function validateSecretStrength(secret: string): SecretStrengthResult {
+  const errors: string[] = [];
+
+  if (typeof secret !== 'string' || secret.length < 32) {
+    errors.push('Secret must be at least 32 characters long');
+  }
+
+  if (!/[A-Z]/.test(secret)) {
+    errors.push('Secret must contain at least one uppercase letter');
+  }
+
+  if (!/[a-z]/.test(secret)) {
+    errors.push('Secret must contain at least one lowercase letter');
+  }
+
+  if (!/\d/.test(secret)) {
+    errors.push('Secret must contain at least one digit');
+  }
+
+  if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(secret)) {
+    errors.push('Secret must contain at least one special character');
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Rotate a secret from `oldSecret` to `newSecret`.
+ *
+ * Validates that the old secret is non-empty and that the new secret meets
+ * minimum strength requirements. Returns a structured result without
+ * performing the actual swap (callers manage storage).
+ */
+export function rotateSecret(oldSecret: string, newSecret: string): SecretRotationResult {
+  const errors: string[] = [];
+
+  const oldSecretValid = typeof oldSecret === 'string' && oldSecret.length > 0;
+
+  if (!oldSecretValid) {
+    errors.push('Old secret is empty or invalid');
+  }
+
+  const strength = validateSecretStrength(newSecret);
+
+  if (!strength.valid) {
+    errors.push(...strength.errors);
+  }
+
+  return {
+    success: errors.length === 0,
+    errors,
+    oldSecretValid,
+  };
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * Internal helpers used by withSecurity
+ * ---------------------------------------------------------------------------
+ */
+
+/** Extract a user identifier from request headers, defaulting to 'anonymous'. */
+function getUserIdFromRequest(request: Request): string {
+  return request.headers.get('x-user-id') || 'anonymous';
+}
+
 /**
  * Security wrapper for API routes
  */
@@ -256,19 +557,58 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
     allowedMethods?: string[];
     roles?: UserRole[];
     permissions?: string[];
+    csrf?: boolean;
   } = {},
 ) {
   return async (args: ActionFunctionArgs | LoaderFunctionArgs): Promise<Response> => {
     const { request } = args;
     const url = new URL(request.url);
     const endpoint = url.pathname;
+    const userId = getUserIdFromRequest(request);
+    const accessContext = getAccessContext(request);
 
     // Check allowed methods
     if (options.allowedMethods && !options.allowedMethods.includes(request.method)) {
+      logAuditEvent(
+        {
+          action: 'access_denied',
+          userId,
+          role: accessContext.role,
+          path: endpoint,
+          method: request.method,
+          details: { reason: 'method-not-allowed' },
+        },
+        'warn',
+      );
+
       return new Response('Method not allowed', {
         status: 405,
         headers: createSecurityHeaders(),
       });
+    }
+
+    // CSRF token validation (optional, enabled with `csrf: true`)
+    if (options.csrf) {
+      if (!validateCsrfTokenFromStore(request)) {
+        logAuditEvent(
+          {
+            action: 'csrf_failed',
+            userId,
+            role: accessContext.role,
+            path: endpoint,
+            method: request.method,
+          },
+          'warn',
+        );
+
+        return new Response(JSON.stringify({ error: true, message: 'Invalid or missing CSRF token' }), {
+          status: 403,
+          headers: {
+            ...createSecurityHeaders(),
+            'Content-Type': 'application/json',
+          },
+        });
+      }
     }
 
     if (options.requireAuth || options.roles || options.permissions) {
@@ -277,6 +617,18 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
       if (!accessResult.allowed) {
         const status = accessResult.reason === 'auth-required' ? 401 : 403;
         const message = accessResult.reason === 'auth-required' ? 'Authentication required' : 'Forbidden';
+
+        logAuditEvent(
+          {
+            action: 'access_denied',
+            userId,
+            role: accessContext.role,
+            path: endpoint,
+            method: request.method,
+            details: { reason: accessResult.reason },
+          },
+          'warn',
+        );
 
         return new Response(JSON.stringify({ error: true, message }), {
           status,
@@ -293,6 +645,18 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
       const rateLimitResult = checkRateLimit(request, endpoint);
 
       if (!rateLimitResult.allowed) {
+        logAuditEvent(
+          {
+            action: 'rate_limited',
+            userId,
+            role: accessContext.role,
+            path: endpoint,
+            method: request.method,
+            details: { resetTime: rateLimitResult.resetTime },
+          },
+          'warn',
+        );
+
         return new Response('Rate limit exceeded', {
           status: 429,
           headers: {
@@ -303,6 +667,18 @@ export function withSecurity<T extends (args: ActionFunctionArgs | LoaderFunctio
         });
       }
     }
+
+    // All security checks passed — log successful access (debug level)
+    logAuditEvent(
+      {
+        action: 'access_granted',
+        userId,
+        role: accessContext.role,
+        path: endpoint,
+        method: request.method,
+      },
+      'debug',
+    );
 
     try {
       // Execute the handler

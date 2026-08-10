@@ -18,14 +18,31 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'json-summary', 'lcov'],
       include: ['app/**/*.ts', 'app/**/*.tsx'],
       exclude: [
         'app/**/*.spec.ts',
+        'app/**/*.spec.tsx',
         'app/**/*.test.ts',
+        'app/**/*.test.tsx',
+        'tests/**',
         '**/*.d.ts',
         '**/*.config.*',
+        'build/**',
+        '**/node_modules/**',
+        '**/dist/**',
+        'electron/**',
+        'scripts/**',
       ],
+      thresholds: {
+        // Conservative starting thresholds — set just below current coverage
+        // so CI passes on day one. Raise these incrementally as tests are added.
+        // Target: 10% statements, 15% branches, 10% functions, 10% lines.
+        statements: 7,
+        branches: 15,
+        functions: 10,
+        lines: 7,
+      },
     },
   },
 });
